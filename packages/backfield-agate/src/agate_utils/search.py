@@ -510,6 +510,71 @@ def brave_place_search(
     return search_response_from_rows(query_label, rows)
 
 
+########## EXA ##########
+
+EXA_SEARCH_URL = "https://api.exa.ai/search"
+
+
+def exa_search(
+    api_key: str,
+    *,
+    query: str,
+    objective: str | None = None,
+    user_location: str | None = None,
+    timeout: float = 30.0,
+) -> SearchResponse:
+    """Exa ``POST /search`` with highlights, mapped to ``SearchResponse``.
+
+    Follows Exa's recommended request (``type: auto``, ``contents.highlights: true``) and adds
+    only ``objective`` (this search is one step of a larger task) and ``userLocation`` (the
+    lookup is location-sensitive). Each result's highlights become its snippet.
+    """
+    q = (query or "").strip()
+    if not q:
+        return SearchResponse(success=False, error="Empty query", results=[], query=query)
+    if not api_key:
+        return SearchResponse(success=False, error="Exa API key not provided", results=[], query=q)
+
+    body: dict[str, Any] = {
+        "query": q,
+        "type": "auto",
+        "contents": {"highlights": True},
+    }
+    if objective and objective.strip():
+        body["objective"] = objective.strip()[:4096]
+    if user_location and user_location.strip():
+        body["userLocation"] = user_location.strip().upper()[:2]
+
+    try:
+        response = requests.post(
+            EXA_SEARCH_URL,
+            headers={"x-api-key": api_key, "Content-Type": "application/json"},
+            json=body,
+            timeout=timeout,
+        )
+        response.raise_for_status()
+        raw = response.json()
+    except Exception as exc:
+        logger.error("Exa search request failed: %s", exc)
+        return SearchResponse(success=False, error=str(exc), results=[], query=q)
+
+    rows: list[dict[str, Any]] = []
+    for item in raw.get("results") or []:
+        if not isinstance(item, Mapping):
+            continue
+        highlights = [
+            str(h).strip() for h in (item.get("highlights") or []) if str(h or "").strip()
+        ]
+        rows.append(
+            {
+                "title": item.get("title") or "",
+                "description": "\n".join(highlights),
+                "url": item.get("url") or "",
+            }
+        )
+    return search_response_from_rows(q, rows)
+
+
 ########## DUCKDUCKGO (no API key; Flowbuilder-ready SearchResponse) ##########
 
 

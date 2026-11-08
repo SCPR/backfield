@@ -12,9 +12,9 @@ from agate_utils.geocoding import overpass as overpass_module
 
 @pytest.fixture(autouse=True)
 def _reset_overpass_semaphore() -> None:
-    overpass_module._overpass_semaphore = None
+    overpass_module._OVERPASS_SEMAPHORE = None
     yield
-    overpass_module._overpass_semaphore = None
+    overpass_module._OVERPASS_SEMAPHORE = None
 
 
 def test_overpass_endpoint_urls_dedupes_primary_and_mirrors(
@@ -46,6 +46,33 @@ def test_retry_delay_honors_retry_after_header() -> None:
         rate_limited=True,
     )
     assert delay == 12.0
+
+
+def test_request_slot_is_reusable_and_shared() -> None:
+    """The real slot (not a stub) must work: it once failed on every query."""
+    with overpass_module._overpass_request_slot():
+        pass
+    with overpass_module._overpass_request_slot():
+        pass
+    assert overpass_module._overpass_semaphore() is overpass_module._overpass_semaphore()
+
+
+def test_run_query_uses_real_request_slot(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        overpass_module,
+        "_overpass_endpoint_urls",
+        lambda: ["https://overpass.test/api/interpreter"],
+    )
+    monkeypatch.setattr(overpass_module.time, "sleep", MagicMock())
+    ok_body = b'{"version": 0.6, "generator": "test", "elements": []}'
+    mock_client = MagicMock()
+    mock_client.post.side_effect = [httpx.Response(200, content=ok_body)]
+    mock_client.__enter__.return_value = mock_client
+
+    with patch.object(overpass_module.httpx, "Client", return_value=mock_client):
+        result = overpass_module.run_query_with_overpy("[out:json]; node(1); out;", max_retries=1)
+
+    assert isinstance(result, overpass_module.overpy.Result)
 
 
 def test_run_query_retries_after_429_then_parses_json(monkeypatch: pytest.MonkeyPatch) -> None:

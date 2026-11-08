@@ -248,6 +248,69 @@ def test_place_search_provider_errors_continue_waterfall() -> None:
     ]
 
 
+def test_place_search_exa_before_ddg_when_no_brave_key() -> None:
+    place = Place(name="Cafe", city="St Paul", state_abbr="MN", country="US")
+    complete = ExtractedAddress(
+        address_found=True,
+        street="100 Main St",
+        city="St Paul",
+        state="MN",
+        country="US",
+        evidence_indexes=[0],
+    )
+    with (
+        patch.object(place, "_generate_search_query", return_value="Cafe St Paul address"),
+        patch("agate_nodes.geocode_agent.models.point.place.brave_web_search") as web,
+        patch(
+            "agate_nodes.geocode_agent.models.point.place.exa_search",
+            return_value=_sample_results("Cafe St Paul address"),
+        ) as exa,
+        patch("agate_nodes.geocode_agent.models.point.place.search_web_duckduckgo") as ddg,
+        patch.object(place, "_extract_and_parse_address", return_value=complete),
+    ):
+        out = asyncio.run(
+            place._try_web_search_address_discovery(
+                brave_search_api_key=None,
+                openai_api_key="sk",
+                is_fallback=False,
+                exa_api_key="exa-key",
+            )
+        )
+    web.assert_not_called()
+    exa.assert_called_once()
+    assert exa.call_args.kwargs["user_location"] == "US"
+    assert "Cafe in St Paul, MN" in exa.call_args.kwargs["objective"]
+    ddg.assert_not_called()
+    assert out is True
+    assert place._address_source == "exa"
+
+
+def test_place_search_falls_back_to_ddg_when_exa_finds_nothing() -> None:
+    place = Place(name="Cafe", city="St Paul", state_abbr="MN", country="US")
+    with (
+        patch.object(place, "_generate_search_query", return_value="Cafe St Paul address"),
+        patch(
+            "agate_nodes.geocode_agent.models.point.place.exa_search",
+            return_value=SearchResponse(success=True, results=[], query="q"),
+        ) as exa,
+        patch(
+            "agate_nodes.geocode_agent.models.point.place.search_web_duckduckgo",
+            return_value=SearchResponse(success=True, results=[], query="q"),
+        ) as ddg,
+    ):
+        out = asyncio.run(
+            place._try_web_search_address_discovery(
+                brave_search_api_key=None,
+                openai_api_key="sk",
+                is_fallback=False,
+                exa_api_key="exa-key",
+            )
+        )
+    exa.assert_called_once()
+    ddg.assert_called_once()
+    assert out is False
+
+
 def test_us_building_address_rejects_street_without_house_number() -> None:
     place = Place(name="Oakland Station", city="Oakland", state_abbr="CA", country="US")
     partial = ExtractedAddress(

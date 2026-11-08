@@ -34,7 +34,10 @@ _DEFAULT_OVERPASS_MIRRORS: tuple[str, ...] = (
 _RETRYABLE_HTTP_STATUSES: frozenset[int] = frozenset({429, 502, 503, 504})
 _DEFAULT_RETRY_DELAY_S = 4.0
 _MAX_RETRY_DELAY_S = 60.0
-_overpass_semaphore: threading.Semaphore | None = None
+# Named apart from ``_overpass_semaphore()``: sharing the name let the function replace this
+# variable, so every query failed with "'function' object has no attribute 'acquire'".
+_OVERPASS_SEMAPHORE: threading.Semaphore | None = None
+_OVERPASS_SEMAPHORE_INIT_LOCK = threading.Lock()
 
 
 def _overpass_user_agent() -> str:
@@ -74,10 +77,11 @@ def _overpass_query_stagger_s() -> float:
 
 
 def _overpass_semaphore() -> threading.Semaphore:
-    global _overpass_semaphore
-    if _overpass_semaphore is None:
-        _overpass_semaphore = threading.Semaphore(_overpass_max_concurrent())
-    return _overpass_semaphore
+    global _OVERPASS_SEMAPHORE
+    with _OVERPASS_SEMAPHORE_INIT_LOCK:
+        if _OVERPASS_SEMAPHORE is None:
+            _OVERPASS_SEMAPHORE = threading.Semaphore(_overpass_max_concurrent())
+        return _OVERPASS_SEMAPHORE
 
 
 @contextmanager

@@ -36,6 +36,7 @@ class AgentState(TypedDict, total=False):
     geocodio_api_key: Optional[str]
     openai_api_key: Optional[str]
     brave_search_api_key: Optional[str]
+    exa_api_key: Optional[str]
     use_cache: bool  # Whether to use Stylebook canonical matching and cache
     stylebook_api_url: Optional[str]  # Stylebook API URL for canonical matching
     project_slug: Optional[str]  # Project slug for canonical matching

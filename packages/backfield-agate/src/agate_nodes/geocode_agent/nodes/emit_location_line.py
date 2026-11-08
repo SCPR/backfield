@@ -38,9 +38,6 @@ _CONTEXT_SNIPPET_MAX = 1200
 _HINTS_SNIPPET_MAX = 800
 
 _PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "location_display_format.md"
-_POLISH_PROMPT_PATH = (
-    Path(__file__).resolve().parent.parent / "prompts" / "polish_location_display.md"
-)
 _ADDRESS_VENUE_UPGRADE_PATH = (
     Path(__file__).resolve().parent.parent / "prompts" / "address_venue_upgrade.md"
 )
@@ -637,7 +634,7 @@ def _preferred_place_head_from_state(state: AgentState) -> str | None:
         return place_name
     if location_text:
         lt = (state.get("location_type") or "").strip().lower()
-        if lt not in _ADMIN_LOCATION_TYPES_SKIP_POLISH:
+        if lt not in _ADMIN_LOCATION_TYPES:
             return location_text
     return None
 
@@ -699,8 +696,8 @@ def _story_context_snippets(state: AgentState) -> tuple[str, str]:
     return orig_snip, hints_snip
 
 
-# Municipality / admin rows: polish must not add neighborhoods from story context.
-_ADMIN_LOCATION_TYPES_SKIP_POLISH: frozenset[str] = frozenset(
+# Municipality / admin rows: the label must not add neighborhoods from story context.
+_ADMIN_LOCATION_TYPES: frozenset[str] = frozenset(
     {
         "city",
         "town",
@@ -714,11 +711,6 @@ _ADMIN_LOCATION_TYPES_SKIP_POLISH: frozenset[str] = frozenset(
     }
 )
 _MUNICIPALITY_DISPLAY_TYPES: frozenset[str] = frozenset({"city", "town", "village"})
-
-
-def should_skip_location_display_polish(location_type: str | None) -> bool:
-    """True when the polish LLM must not run (admin geography uses emit + clamp only)."""
-    return (location_type or "").strip().lower() in _ADMIN_LOCATION_TYPES_SKIP_POLISH
 
 
 def _state_abbr_from_components(components: dict[str, Any]) -> str | None:
@@ -770,6 +762,29 @@ def _state_display_baseline(components: dict[str, Any]) -> str | None:
     return None
 
 
+def structured_admin_location_line(
+    location_type: str | None,
+    components: dict[str, Any] | None,
+) -> str | None:
+    """Label a US municipality, county or state from its structured components, with no model.
+
+    ``clamp_admin_location_display_line`` already replaces a model's label for these rows with
+    the same baseline, so asking the model first only costs a call. Returns None when the
+    components are too thin (no state code, e.g. a foreign city), leaving the model path.
+    """
+    comps = components if isinstance(components, dict) else {}
+    lt = (location_type or "").strip().lower()
+    abbr = _state_abbr_from_components(comps)
+    line: str | None = None
+    if lt in _MUNICIPALITY_DISPLAY_TYPES and abbr and str(comps.get("city") or "").strip():
+        line = _municipal_display_baseline(lt, "", "", comps)
+    elif lt == "county" and abbr and str(comps.get("county") or "").strip():
+        line = _county_display_baseline(comps)
+    elif lt == "state":
+        line = _state_display_baseline(comps)
+    return refine_location_display_line(line) if line else None
+
+
 def clamp_admin_location_display_line(
     location_type: str,
     location_text: str,
@@ -777,7 +792,7 @@ def clamp_admin_location_display_line(
     components: dict[str, Any] | None,
     line: str,
 ) -> str:
-    """Reset display lines when polish/emit inserted child geography on an admin row."""
+    """Reset display lines when the model inserted child geography on an admin row."""
     comps = components if isinstance(components, dict) else {}
     lt = (location_type or "").strip().lower()
     got = refine_location_display_line((line or "").strip())
@@ -829,69 +844,6 @@ def _heuristic_emit_location(
     return refine_location_display_line(out)
 
 
-async def _maybe_polish_with_llm(
-    candidate: str,
-    model: str,
-    openai_key: str,
-    *,
-    location_type: str = "",
-    story_context: str = "(none)",
-    geocode_hints: str = "(none)",
-    model_config_id: str | None = None,
-) -> str:
-    """Optional final LLM pass for edge cases; deterministic pass reapplied after."""
-    cand = (candidate or "").strip()
-    if not cand:
-        return cand
-    if should_skip_location_display_polish(location_type):
-        return cand
-    try:
-        template = _POLISH_PROMPT_PATH.read_text(encoding="utf-8")
-    except OSError as exc:
-        logger.debug("polish_location_display prompt missing: %s", exc)
-        return candidate
-    sc = (story_context or "").strip() or "(none)"
-    gh = (geocode_hints or "").strip() or "(none)"
-    lt = (location_type or "").strip() or "(unknown)"
-    prompt = (
-        template.replace("{candidate}", cand)
-        .replace("{story_context}", sc)
-        .replace("{geocode_hints}", gh)
-        .replace("{location_type}", lt)
-    )
-
-    def _sync() -> str:
-        return call_llm(
-            prompt=prompt,
-            model=model,
-            system_message=None,
-            force_json=True,
-            max_retries=1,
-            temperature=0.0,
-            max_tokens=512,
-            openai_api_key=openai_key,
-            anthropic_api_key=None,
-            project_system_prompt=None,
-            timeout=45.0,
-            model_config_id=model_config_id,
-        )
-
-    try:
-        raw = await asyncio.to_thread(_sync)
-        payload = json.loads(raw)
-    except Exception as exc:
-        logger.debug("polish_location_display LLM failed: %s", exc)
-        return candidate
-
-    loc = payload.get("location") if isinstance(payload, dict) else None
-    if not isinstance(loc, str):
-        return candidate
-    loc = loc.strip()
-    if not loc:
-        return candidate
-    return refine_location_display_line(loc)
-
-
 async def compute_emit_location_line(
     state: AgentState,
     *,
@@ -900,15 +852,16 @@ async def compute_emit_location_line(
     """
     Produce the human-facing ``location`` string for a geocoded item.
 
-    Uses a small JSON LLM when an API key or catalog model config is available;
-    otherwise heuristics on ``location_text``.
+    US municipalities, counties and states are labeled from structured components. Other
+    rows use one small JSON LLM call when an API key or catalog model config is available,
+    then the deterministic ``refine_location_display_line`` cleanup; otherwise heuristics
+    on ``location_text``.
     """
     location_type = (state.get("location_type") or "").strip()
     location_text = (state.get("location_text") or "").strip()
     formatted_address = (formatted_address or "").strip()
     openai_key = state.get("openai_api_key")
     model = _evaluation_litellm_model_for_emit(state)
-    polish_model = model
     components = state.get("location_components") or {}
     if not isinstance(components, dict):
         components = {}
@@ -933,6 +886,10 @@ async def compute_emit_location_line(
             address_clamped,
         )
         return restore_preferred_place_head_casing(clamped, preferred_head)
+
+    structured = structured_admin_location_line(location_type, components)
+    if structured:
+        return _finalize(structured)
 
     emit_mc = _evaluation_ai_model_config_id_for_emit(state)
     if not has_llm_auth(openai_key, emit_mc):
@@ -986,17 +943,7 @@ async def compute_emit_location_line(
     if not loc:
         return _finalize(_heuristic_emit_location(location_type, location_text, formatted_address))
 
-    refined = refine_location_display_line(loc)
-    polished = await _maybe_polish_with_llm(
-        refined,
-        polish_model,
-        openai_key,
-        location_type=location_type,
-        story_context=orig_snip,
-        geocode_hints=hints_snip,
-        model_config_id=_evaluation_ai_model_config_id_for_emit(state),
-    )
-    return _finalize(polished)
+    return _finalize(refine_location_display_line(loc))
 
 
 async def _maybe_upgrade_to_named_place(

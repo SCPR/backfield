@@ -17,6 +17,7 @@ from backfield_ai.constants import (
     INTEGRATION_KEY_AI_PROVIDER_OPENAI,
     INTEGRATION_KEY_AI_PROVIDER_OPENROUTER,
     INTEGRATION_KEY_PLATFORM_BRAVE_SEARCH,
+    INTEGRATION_KEY_PLATFORM_EXA_SEARCH,
     INTEGRATION_KEY_PLATFORM_GEOCODE_EARTH,
     INTEGRATION_KEY_PLATFORM_GEOCODIO,
     INTEGRATION_KEY_PLATFORM_S3_ACCESS_KEY_ID,
@@ -86,6 +87,8 @@ def organization_platform_env_keys(session: Session, organization_id: int) -> di
             out["GEOCODIO_API_KEY"] = plain
         elif ik == INTEGRATION_KEY_PLATFORM_BRAVE_SEARCH:
             out["BRAVE_SEARCH_API_KEY"] = plain
+        elif ik == INTEGRATION_KEY_PLATFORM_EXA_SEARCH:
+            out["EXA_API_KEY"] = plain
         elif ik == INTEGRATION_KEY_PLATFORM_S3_ACCESS_KEY_ID:
             out["AWS_ACCESS_KEY_ID"] = plain
         elif ik == INTEGRATION_KEY_PLATFORM_S3_SECRET_ACCESS_KEY:
