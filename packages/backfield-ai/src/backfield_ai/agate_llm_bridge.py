@@ -5,9 +5,13 @@ from __future__ import annotations
 import logging
 import time
 
-from backfield_ai.catalog_runtime import resolve_llm_auth_for_model_config
+from backfield_ai.catalog_runtime import (
+    catalog_token_prices,
+    resolve_llm_auth_for_model_config,
+)
 from backfield_ai.completion import LiteLLMCompletionRejectedError, completion_text_sync
 from backfield_ai.constants import COST_ESTIMATE_SOURCE_UNAVAILABLE
+from backfield_ai.cost_estimate import apply_catalog_token_prices
 from backfield_ai.json_clean import clean_json_response_text
 from backfield_ai.tracking_context import current_llm_tracking_context, persist_llm_attempt
 
@@ -84,6 +88,8 @@ def call_llm_tracked_sync(
     track_ctx = current_llm_tracking_context()
     catalog_api_key: str | None = None
     catalog_api_base: str | None = None
+    catalog_input_price = None
+    catalog_output_price = None
     if track_ctx and mc_norm:
         from backfield_db.session import get_engine
         from sqlmodel import Session
@@ -95,6 +101,18 @@ def call_llm_tracked_sync(
                 model_config_id=mc_norm,
                 fallback_litellm_model=lm_model,
             )
+            catalog_input_price, catalog_output_price = catalog_token_prices(
+                session,
+                project_id=track_ctx.project_id,
+                model_config_id=mc_norm,
+            )
+
+    def _priced(r):
+        return apply_catalog_token_prices(
+            r,
+            input_price=catalog_input_price,
+            output_price=catalog_output_price,
+        )
 
     from agate_utils.llm import merge_system_messages, resolve_project_system_prompt
 
@@ -167,6 +185,7 @@ def call_llm_tracked_sync(
                 allow_max_tokens_bump=allow_max_tokens_bump,
                 reasoning_effort=reasoning_effort,
             )
+            result = _priced(result)
             snap = {"provider": result.provider, "provider_model_id": result.provider_model_id}
             persist_llm_attempt(
                 provider=result.provider,
@@ -203,7 +222,7 @@ def call_llm_tracked_sync(
             return clean_json_response_text(text) if force_json else text
         except LiteLLMCompletionRejectedError as exc:
             last_err = exc
-            r = exc.result
+            r = _priced(exc.result)
             err_type = type(exc).__name__
             err_msg = str(exc)[:2000]
             logger.warning(

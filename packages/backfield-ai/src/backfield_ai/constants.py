@@ -15,6 +15,9 @@ DEFAULT_AI_CURRENCY = "USD"
 # ``BackfieldAiCallRecord.cost_estimate_source`` — how ``estimated_cost`` was produced.
 COST_ESTIMATE_SOURCE_LITELLM = "litellm"
 COST_ESTIMATE_SOURCE_MANUAL = "manual"
+# Token counts priced with the per-token prices saved on the catalog model config, used when
+# LiteLLM has no price for the route (e.g. a Bedrock application inference profile ARN).
+COST_ESTIMATE_SOURCE_CATALOG_PRICE = "catalog_price"
 # No completion response to run ``litellm.completion_cost`` on (e.g. transport error).
 COST_ESTIMATE_SOURCE_UNAVAILABLE = "unavailable"
 
