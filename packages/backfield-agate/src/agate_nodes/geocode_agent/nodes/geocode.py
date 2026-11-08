@@ -655,6 +655,7 @@ async def orchestrate_external_geocode(state: AgentState) -> AgentState:
         geocodio_api_key = state.get("geocodio_api_key")
         openai_api_key = state.get("openai_api_key")
         brave_search_api_key = state.get("brave_search_api_key")
+        exa_api_key = state.get("exa_api_key")
 
         model = _create_model(location_type, location_text, components, state)
         if model is None:
@@ -699,10 +700,11 @@ async def orchestrate_external_geocode(state: AgentState) -> AgentState:
                 # Advanced graph sets ``allow_web_search`` from route_strategy; baseline graph
                 # omits it (default True). ``allow_web_search=False`` skips *upfront* search;
                 # Place.geocode may still fall back to web search after inconclusive Pelias.
-                # Always pass the Brave key so that fallback path can run.
+                # Always pass the search keys so that fallback path can run.
                 raw_allow = state.get("allow_web_search")
                 allow_web = True if raw_allow is None else bool(raw_allow)
                 geocode_kwargs["brave_search_api_key"] = brave_search_api_key
+                geocode_kwargs["exa_api_key"] = exa_api_key
                 geocode_kwargs["allow_web_search"] = allow_web
             if isinstance(model, StreetRoad):
                 geocode_kwargs["original_text"] = state.get("original_text", "")

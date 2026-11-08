@@ -22,6 +22,7 @@ from agate_utils.search import (
     SearchResponse,
     brave_place_search,
     brave_web_search,
+    exa_search,
     search_web_duckduckgo,
 )
 
@@ -518,14 +519,24 @@ class Place(Address):
         self._apply_discovered_address(address_data)
         return True
 
+    def _exa_search_objective(self) -> str:
+        """Tell Exa what the search is for, so pages listing the street address rank first."""
+        where = ", ".join(part for part in (self.city, self.state_abbr) if part)
+        target = f"{self.name} in {where}" if where else str(self.name)
+        return (
+            f"Find the street address of {target}. Prefer the venue's official site, "
+            "its listing pages and maps listings that state the full street address."
+        )
+
     async def _try_web_search_address_discovery(
         self,
         *,
         brave_search_api_key: str | None,
         openai_api_key: str,
         is_fallback: bool,
+        exa_api_key: str | None = None,
     ) -> bool:
-        """Run Web → Place → DDG discovery; stop at a complete address."""
+        """Run Brave web → Brave place → Exa → DDG discovery; stop at a complete address."""
         self._web_search_used = True
         if is_fallback:
             self._web_search_fallback_used = True
@@ -570,6 +581,24 @@ class Place(Address):
                 logger.warning("Brave place search failed for place %s: %s", self.name, exc)
                 self._record_address_search_attempt("brave_place", None, "error")
 
+        if exa_api_key:
+            try:
+                exa_response = exa_search(
+                    exa_api_key,
+                    query=query,
+                    objective=self._exa_search_objective(),
+                    user_location=self._country_code_for_search(),
+                )
+                if self._consider_address_search_response(
+                    provider="exa",
+                    response=exa_response,
+                    openai_api_key=openai_api_key,
+                ):
+                    return True
+            except Exception as exc:
+                logger.warning("Exa search failed for place %s: %s", self.name, exc)
+                self._record_address_search_attempt("exa", None, "error")
+
         try:
             ddg_response = search_web_duckduckgo(query, max_results=10, timeout=15.0)
             return self._consider_address_search_response(
@@ -592,6 +621,7 @@ class Place(Address):
         brave_search_api_key: Optional[str] = None,
         *,
         allow_web_search: bool = True,
+        exa_api_key: Optional[str] = None,
     ) -> Optional[GeocodingResult]:
         """Geocode a named place as a POI.
 
@@ -643,6 +673,7 @@ class Place(Address):
                     brave_search_api_key=brave_search_api_key,
                     openai_api_key=openai_key,
                     is_fallback=False,
+                    exa_api_key=exa_api_key,
                 )
 
         result = await self._geocode_pelias_decisive(
@@ -663,6 +694,7 @@ class Place(Address):
                 brave_search_api_key=brave_search_api_key,
                 openai_api_key=openai_key,
                 is_fallback=True,
+                exa_api_key=exa_api_key,
             )
             if discovered:
                 result = await self._geocode_pelias_decisive(
