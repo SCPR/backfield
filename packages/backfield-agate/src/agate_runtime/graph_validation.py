@@ -16,6 +16,13 @@ REQUIRED_UPSTREAM_BY_TYPE: dict[str, frozenset[str]] = {
     "GeocodeAgent": frozenset({"PlaceExtract"}),
 }
 
+# Mirrors metadata ``satisfiedByInputData``: the required upstream step may instead be an input
+# step wired straight into this handle, for documents that already carry the data (for example
+# saved PlaceExtract ``locations`` being re-geocoded without extracting again).
+REQUIRED_UPSTREAM_INPUT_HANDLE_BY_TYPE: dict[str, str] = {
+    "GeocodeAgent": "locations",
+}
+
 
 class GraphInvariantError(ValueError):
     """Raised when a graph violates product placement rules."""
@@ -140,17 +147,38 @@ def _ancestor_types(spec: GraphSpec, node_id: str) -> set[str]:
     return found
 
 
+def _fed_by_input_on_handle(spec: GraphSpec, node_id: str, handle: str) -> bool:
+    """True when an input step connects straight into ``node_id`` on ``handle``."""
+    by_id = {node.id: node for node in spec.nodes}
+    for edge in spec.edges:
+        if edge.target != node_id or edge.targetHandle != handle:
+            continue
+        source = by_id.get(edge.source)
+        if source is not None and source.type in INPUT_BOOKEND_TYPES:
+            return True
+    return False
+
+
 def validate_required_upstream_nodes(spec: GraphSpec) -> None:
-    """Enforce metadata-style ``requiredUpstreamNodes`` via transitive ancestry."""
+    """Enforce metadata-style ``requiredUpstreamNodes`` via transitive ancestry.
+
+    A node listed in ``REQUIRED_UPSTREAM_INPUT_HANDLE_BY_TYPE`` is also satisfied by an input
+    step wired directly into that handle, so already-extracted data can be reprocessed.
+    """
     for node in spec.nodes:
         required = REQUIRED_UPSTREAM_BY_TYPE.get(node.type)
         if not required:
             continue
         ancestors = _ancestor_types(spec, node.id)
         if ancestors.isdisjoint(required):
+            handle = REQUIRED_UPSTREAM_INPUT_HANDLE_BY_TYPE.get(node.type)
+            if handle and _fed_by_input_on_handle(spec, node.id, handle):
+                continue
             if node.type == "GeocodeAgent":
                 raise GraphInvariantError(
-                    "Geocode Agent must follow Place Extract in the same branch."
+                    "Geocode Agent needs places: put Place Extract before it in the same "
+                    "branch, or connect an input whose documents already include "
+                    "`locations` to its locations input."
                 )
             needed = ", ".join(sorted(required))
             raise GraphInvariantError(

@@ -1,4 +1,8 @@
-import { isInputBookendType, isOutputBookendType } from '@/lib/flowValidation'
+import {
+  directInputSatisfiesUpstream,
+  isInputBookendType,
+  isOutputBookendType,
+} from '@/lib/flowValidation'
 import { nodeMetadata } from '@/nodes/registry'
 import {
   BOOKEND_INPUT_POSITION,
@@ -194,7 +198,11 @@ export function getInvalidFlowNodeIds(model: FlowGraphModel): Set<string> {
     if (requiredUpstreamNodes.length === 0) continue
 
     const ancestry = getBranchAncestry(model, node.id)
-    const hasRequiredUpstream = requiredUpstreamNodes.some((type) => ancestry.includes(type))
+    const parentId = parentIdOf(model, node.id)
+    const parentType = parentId ? getNodeById(model, parentId)?.type : undefined
+    const hasRequiredUpstream =
+      requiredUpstreamNodes.some((type) => ancestry.includes(type)) ||
+      directInputSatisfiesUpstream(node.type, parentType)
     if (!hasRequiredUpstream) {
       invalid.add(node.id)
     }

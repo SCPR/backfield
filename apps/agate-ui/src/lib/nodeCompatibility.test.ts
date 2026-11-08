@@ -31,7 +31,26 @@ describe('getCompatibleNextNodes', () => {
   it('includes helper text on disabled Geocode before Place Extract exists', () => {
     const result = getCompatibleNextNodes('TextInput', ['TextInput'])
     const geocode = result.disabled.find((e) => e.type === 'GeocodeAgent')
-    expect(geocode?.reason).toBe('Requires extracted places as input.')
+    expect(geocode?.reason).toBe(
+      'Requires extracted places as input: Place Extract, or saved places from an input.',
+    )
+  })
+
+  it('offers Geocode straight after S3 Input, which can carry saved places', () => {
+    const result = getCompatibleNextNodes('S3Input', ['S3Input'])
+    expect(result.enabled.map((e) => e.type)).toContain('GeocodeAgent')
+  })
+
+  it('wires S3 Input saved places into the Geocode locations port', () => {
+    expect(resolveEdgeHandles('S3Input', 'GeocodeAgent')).toEqual({
+      sourceHandle: 'locations',
+      targetHandle: 'locations',
+    })
+  })
+
+  it('keeps S3 Input text as the port for extract steps and Gather', () => {
+    expect(resolveEdgeHandles('S3Input', 'PlaceExtract')?.sourceHandle).toBe('text')
+    expect(resolveEdgeHandles('S3Input', 'Gather')?.sourceHandle).toBe('text')
   })
 
   it('enables Person and Place Extract from JSON Input', () => {

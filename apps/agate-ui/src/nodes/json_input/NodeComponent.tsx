@@ -12,6 +12,13 @@ const nodeMetadata = {
       "id": "text",
       "label": "Text + Data",
       "type": "object"
+    },
+    {
+      "id": "locations",
+      "label": "Saved places",
+      "type": "array",
+      "passthrough": true,
+      "description": "The document's own `locations` field (already-extracted places), for re-geocoding without extracting again."
     }
   ],
   "defaultParams": {

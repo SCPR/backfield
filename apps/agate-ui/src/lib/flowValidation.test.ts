@@ -575,6 +575,42 @@ describe('validateRequiredUpstreamNodes', () => {
       ),
     ).toMatchObject({ ok: false, title: 'Geocode needs places' })
   })
+
+  it('passes when Geocode is fed saved places straight from S3 Input', () => {
+    expect(
+      validateRequiredUpstreamNodes(
+        graph({
+          nodes: [
+            { id: 'in', type: 'S3Input' },
+            { id: 'geo', type: 'GeocodeAgent' },
+            { id: 'out', type: 'DBOutput' },
+          ],
+          edges: [
+            { source: 'in', target: 'geo' },
+            { source: 'geo', target: 'out' },
+          ],
+        }),
+      ).ok,
+    ).toBe(true)
+  })
+
+  it('still rejects Geocode fed directly by Text Input (no saved places port)', () => {
+    expect(
+      validateRequiredUpstreamNodes(
+        graph({
+          nodes: [
+            { id: 'in', type: 'TextInput' },
+            { id: 'geo', type: 'GeocodeAgent' },
+            { id: 'out', type: 'DBOutput' },
+          ],
+          edges: [
+            { source: 'in', target: 'geo' },
+            { source: 'geo', target: 'out' },
+          ],
+        }),
+      ),
+    ).toMatchObject({ ok: false, title: 'Geocode needs places' })
+  })
 })
 
 describe('validateJsonInputNodes', () => {

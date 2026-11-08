@@ -4,12 +4,13 @@ const nodeMetadata = {
   "label": "Geocode Agent",
   "icon": "MapPinned",
   "color": "bg-teal-600",
-  "description": "Requires PlaceExtract output. Uses multiple geocoders to turn extracted locations into map-ready coordinates. Optionally use cache to reduce lookups and ensure consistency.",
+  "description": "Requires extracted places: PlaceExtract output, or an input whose documents already include `locations`. Uses multiple geocoders to turn extracted locations into map-ready coordinates. Optionally use cache to reduce lookups and ensure consistency.",
   "category": "enrichment",
   "requiredUpstreamNodes": [
     "PlaceExtract"
   ],
-  "dependencyHelperText": "Requires extracted places as input.",
+  "satisfiedByInputData": "locations",
+  "dependencyHelperText": "Requires extracted places as input: Place Extract, or saved places from an input.",
   "inputs": [
     {
       "id": "locations",
