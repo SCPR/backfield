@@ -622,6 +622,23 @@ async def resolve_cache_or_miss(state: AgentState) -> AgentState:
     return state
 
 
+async def run_geocode_off_event_loop(model: Any, geocode_kwargs: dict[str, Any]) -> Any:
+    """Run ``model.geocode`` on a worker thread with its own event loop.
+
+    The location models are ``async`` but make many synchronous calls inside: ``call_llm``,
+    ``requests``-based web search and Geocodio, sync ``httpx`` for Overpass. Awaited on the
+    shared loop, each of those blocks every other location in the story, so the
+    ``GEOCODE_MAX_CONCURRENT`` semaphore barely overlaps work. A private loop per location
+    lets the blocking calls run in parallel threads; the models' own awaits (Pelias'
+    ``httpx.AsyncClient``) still work because each client is created inside the call.
+
+    ``asyncio.to_thread`` copies the caller's context, so the run-scoped LLM tracking and
+    geocoder-health context variables still apply inside the thread. A per-location timeout
+    that cancels the awaiting task cannot stop the thread; it finishes and is discarded.
+    """
+    return await asyncio.to_thread(lambda: asyncio.run(model.geocode(**geocode_kwargs)))
+
+
 async def orchestrate_external_geocode(state: AgentState) -> AgentState:
     """External geocoding path after cache miss (and optional routing)."""
     if state.get("geocoding_result") is not None:
@@ -690,7 +707,7 @@ async def orchestrate_external_geocode(state: AgentState) -> AgentState:
             if isinstance(model, StreetRoad):
                 geocode_kwargs["original_text"] = state.get("original_text", "")
 
-        result = await model.geocode(**geocode_kwargs)
+        result = await run_geocode_off_event_loop(model, geocode_kwargs)
 
         state["geocoding_result"] = result
         state["geocoding_model"] = model
