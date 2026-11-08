@@ -26,6 +26,11 @@ from backfield_entities.connections.natures import (
     nature_def,
     normalize_preferred_nature_slug,
 )
+from backfield_entities.connections.subsumption import (
+    fold_broader_edges_into,
+    open_edges_for_pair,
+    subsuming_natures,
+)
 from backfield_entities.connections.taxonomy import AUTO_CONNECTION_PROMPT_VERSION
 from backfield_entities.connections.types import AutoConnectionEdgeProposal, LinkedEntitySnapshot
 
@@ -295,7 +300,9 @@ def write_auto_connections(
             currentness_review_source=edge.currentness_review_source,
         )
 
-        existing = _find_open_edge(
+        # A stored, more specific edge for this pair (member_of from an earlier article, say)
+        # already describes this relationship: cite this article there instead.
+        specific = open_edges_for_pair(
             session,
             stylebook_id=stylebook_id,
             project_id=project_id,
@@ -303,9 +310,27 @@ def write_auto_connections(
             from_entity_id=edge.from_entity_id,
             to_entity_type=to_entity_type,
             to_entity_id=edge.to_entity_id,
-            nature=nature,
+            natures=subsuming_natures(nature),
         )
+        if specific:
+            nature = specific[0].nature
+            definition = nature_def(nature, from_entity_type, to_entity_type) if nature else None
+            existing: StylebookConnection | None = specific[0]
+        else:
+            existing = _find_open_edge(
+                session,
+                stylebook_id=stylebook_id,
+                project_id=project_id,
+                from_entity_type=from_entity_type,
+                from_entity_id=edge.from_entity_id,
+                to_entity_type=to_entity_type,
+                to_entity_id=edge.to_entity_id,
+                nature=nature,
+            )
         if existing is not None:
+            fold_broader_edges_into(
+                session, existing, stylebook_id=stylebook_id, project_id=project_id
+            )
             appended = _append_evidence(
                 session,
                 connection=existing,
@@ -415,6 +440,7 @@ def write_auto_connections(
             session.delete(row)
             result.skipped_existing_count += 1
             continue
+        fold_broader_edges_into(session, row, stylebook_id=stylebook_id, project_id=project_id)
         _apply_currentness_summary(
             row,
             evidence_row,
