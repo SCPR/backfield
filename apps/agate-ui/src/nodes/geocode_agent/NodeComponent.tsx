@@ -46,7 +46,8 @@ const nodeMetadata = {
     "geographicEstimationAiModelConfigId": null,
     "routerAiModelConfigId": null,
     "useCacheLlmAdjudication": true,
-    "useCacheLlmAdjudicationOnMissRecall": false
+    "useCacheLlmAdjudicationOnMissRecall": false,
+    "webSearchProvider": "auto"
   }
 };
 

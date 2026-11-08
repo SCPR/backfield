@@ -35,6 +35,7 @@ export default function OrgIntegrationsSettings() {
   const [pelias, setPelias] = useState('')
   const [geocodio, setGeocodio] = useState('')
   const [brave, setBrave] = useState('')
+  const [exa, setExa] = useState('')
   const [awsId, setAwsId] = useState('')
   const [awsSecret, setAwsSecret] = useState('')
   const [awsSession, setAwsSession] = useState('')
@@ -303,7 +304,17 @@ export default function OrgIntegrationsSettings() {
           >
             Brave Search
           </a>{' '}
-          to gather metadata that improves the accuracy of geocoding and gathers other metadata.{' '}
+          and{' '}
+          <a
+            href="https://exa.ai/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline-offset-4 hover:underline"
+          >
+            Exa
+          </a>{' '}
+          to gather metadata that improves the accuracy of geocoding and gathers other metadata.
+          Each Geocode Agent chooses which one to use.{' '}
           <a
             href="https://duckduckgo.com/"
             target="_blank"
@@ -359,6 +370,57 @@ export default function OrgIntegrationsSettings() {
                   size="sm"
                   disabled={saving || !configuredKeys.has(PLATFORM_INTEGRATION_KEYS.braveSearch)}
                   onClick={() => void removePlatform(PLATFORM_INTEGRATION_KEYS.braveSearch)}
+                >
+                  Remove
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="w-full">
+            <CardHeader>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CardTitle className="text-base">Exa</CardTitle>
+                <StatusBadge configured={configuredKeys.has(PLATFORM_INTEGRATION_KEYS.exaSearch)} />
+              </div>
+              <CardDescription>Agentic web search; an alternative to Brave Search.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <Label htmlFor="org-exa">API key</Label>
+                <Input
+                  id="org-exa"
+                  type="password"
+                  autoComplete="off"
+                  value={exa}
+                  onChange={(e) => setExa(e.target.value)}
+                  disabled={saving}
+                  placeholder={
+                    configuredKeys.has(PLATFORM_INTEGRATION_KEYS.exaSearch) && !exa.trim()
+                      ? STORED_SECRET_PLACEHOLDER
+                      : undefined
+                  }
+                  className="font-mono text-sm mt-1 w-full"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={saving || !exa.trim()}
+                  onClick={async () => {
+                    const ok = await savePlatform(PLATFORM_INTEGRATION_KEYS.exaSearch, exa.trim())
+                    if (ok) setExa('')
+                  }}
+                >
+                  Save
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={saving || !configuredKeys.has(PLATFORM_INTEGRATION_KEYS.exaSearch)}
+                  onClick={() => void removePlatform(PLATFORM_INTEGRATION_KEYS.exaSearch)}
                 >
                   Remove
                 </Button>

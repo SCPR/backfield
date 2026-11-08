@@ -76,6 +76,7 @@ def is_project_model_override_integration_key(integration_key: str) -> bool:
 INTEGRATION_KEY_PLATFORM_GEOCODE_EARTH = "platform.geocode.geocode_earth"
 INTEGRATION_KEY_PLATFORM_GEOCODIO = "platform.geocode.geocodio"
 INTEGRATION_KEY_PLATFORM_BRAVE_SEARCH = "platform.search.brave"
+INTEGRATION_KEY_PLATFORM_EXA_SEARCH = "platform.search.exa"
 INTEGRATION_KEY_PLATFORM_S3_ACCESS_KEY_ID = "platform.storage.s3_access_key_id"
 INTEGRATION_KEY_PLATFORM_S3_SECRET_ACCESS_KEY = "platform.storage.s3_secret_access_key"
 INTEGRATION_KEY_PLATFORM_S3_SESSION_TOKEN = "platform.storage.s3_session_token"
@@ -86,6 +87,7 @@ ORG_PLATFORM_INTEGRATION_KEYS: frozenset[str] = frozenset(
         INTEGRATION_KEY_PLATFORM_GEOCODE_EARTH,
         INTEGRATION_KEY_PLATFORM_GEOCODIO,
         INTEGRATION_KEY_PLATFORM_BRAVE_SEARCH,
+        INTEGRATION_KEY_PLATFORM_EXA_SEARCH,
         INTEGRATION_KEY_PLATFORM_S3_ACCESS_KEY_ID,
         INTEGRATION_KEY_PLATFORM_S3_SECRET_ACCESS_KEY,
         INTEGRATION_KEY_PLATFORM_S3_SESSION_TOKEN,

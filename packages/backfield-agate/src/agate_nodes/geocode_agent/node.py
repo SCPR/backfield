@@ -4,7 +4,7 @@ import os
 import asyncio
 import time
 import logging
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Literal, Optional, Tuple
 from pydantic import AliasChoices, BaseModel, Field, ConfigDict, model_validator
 
 from agate_runtime.context import AgateEnvContext
@@ -51,6 +51,28 @@ def _flatten_executor_upstream_inputs(state: Dict[str, Any]) -> Dict[str, Any]:
 
 
 ########## AGENT MODELS ##########
+
+def select_web_search_keys(
+    provider: str,
+    brave_search_api_key: Optional[str],
+    exa_api_key: Optional[str],
+) -> Tuple[Optional[str], Optional[str]]:
+    """Return the (Brave, Exa) keys the address search may use for ``webSearchProvider``.
+
+    Place address discovery tries every provider whose key it receives (Brave, then Exa, then
+    DuckDuckGo), so choosing one provider means withholding the other's key.
+    """
+    choice = (provider or "auto").strip().lower()
+    if choice == "brave":
+        if not brave_search_api_key:
+            logger.warning("webSearchProvider=brave but no Brave key is set; using DuckDuckGo only")
+        return brave_search_api_key, None
+    if choice == "exa":
+        if not exa_api_key:
+            logger.warning("webSearchProvider=exa but no Exa key is set; using DuckDuckGo only")
+        return None, exa_api_key
+    return brave_search_api_key, exa_api_key
+
 
 class GeocodeAgentInput(BaseModel):
     """Input schema - expects to find locations in namespaced state."""
@@ -138,6 +160,14 @@ class GeocodeAgentParams(BaseModel):
         description=(
             "When useCache and DB bundle: also run adjudication on strict cache miss "
             "if trigram recall returns canonical candidates (extra LLM cost)"
+        ),
+    )
+    webSearchProvider: Literal["auto", "brave", "exa"] = Field(
+        default="auto",
+        description=(
+            "Web search used to find a named place's street address: auto tries Brave then Exa "
+            "(whichever keys are set), brave or exa uses only that one. DuckDuckGo is always the "
+            "free last resort."
         ),
     )
 
@@ -336,6 +366,9 @@ async def _run_geocode_agent_pipeline_tracked(
     openai_api_key = ctx.get_api_key("OPENAI_API_KEY")
     brave_search_api_key = ctx.get_api_key("BRAVE_SEARCH_API_KEY")
     exa_api_key = ctx.get_api_key("EXA_API_KEY")
+    brave_search_api_key, exa_api_key = select_web_search_keys(
+        params.webSearchProvider, brave_search_api_key, exa_api_key
+    )
     service_api_token = ctx.get_api_key("SERVICE_API_TOKEN")
 
     eval_lm_model = params.evaluationModel

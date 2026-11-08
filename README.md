@@ -141,6 +141,7 @@ For optimal performance, Backfield relies on several external services and APIs 
 - **[Geocode Earth](https://geocode.earth/):** A great geocoder, based on open source technology, with permissive data retention rules. Has a generous free tier.
 - **[Geocodio](https://www.geocod.io/)**: Another permissive geocoder that is used as a fallback and for some special geocoding cases. Also comes with a free tier. For both geocoders, [Nominatim](https://nominatim.org/) is used as a fallback.
 - **[Brave Search API](https://brave.com/search/api/)**: Web Search discovers address evidence for named places; Place Search is the structured fallback. DuckDuckGo is used when neither Brave source yields a complete address.
+- **[Exa](https://exa.ai/)**: An alternative web search for the same address discovery. Each Geocode Agent's **Web search** setting picks Auto (Brave, then Exa), Brave only, or Exa only; DuckDuckGo stays the free fallback.
 - **[AWS S3](https://aws.amazon.com/pm/serv-s3)**: Used for S3 Input and Output
 
 All of these services are optional, but they greatly enhance performance.
