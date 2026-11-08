@@ -86,17 +86,9 @@ def _clean_json_response(response_text: str) -> str:
     Returns:
         Cleaned response text without markdown formatting
     """
-    cleaned = response_text.strip()
-    
-    # Remove markdown code blocks if present
-    if cleaned.startswith("```json"):
-        cleaned = cleaned[7:]  # Remove ```json
-    if cleaned.startswith("```"):
-        cleaned = cleaned[3:]  # Remove ```
-    if cleaned.endswith("```"):
-        cleaned = cleaned[:-3]  # Remove trailing ```
-    
-    return cleaned.strip()
+    from backfield_ai.json_clean import clean_json_response_text
+
+    return clean_json_response_text(response_text)
 
 
 def call_llm(
