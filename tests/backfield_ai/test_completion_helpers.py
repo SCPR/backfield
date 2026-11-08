@@ -330,6 +330,40 @@ def test_completion_text_sync_omits_max_tokens_for_non_gpt56(
     assert "max_tokens" not in captured
 
 
+@pytest.mark.parametrize(
+    "model",
+    [
+        "anthropic/claude-sonnet-5-5",
+        "bedrock/arn:aws:bedrock:us-west-2:123456789012:application-inference-profile/abc123",
+    ],
+)
+def test_completion_text_sync_defaults_max_tokens_and_omits_temperature_for_claude5(
+    monkeypatch: pytest.MonkeyPatch,
+    model: str,
+) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_completion(**kwargs: object) -> object:
+        captured.update(kwargs)
+        return _ok_resp('{"locations":[]}')
+
+    monkeypatch.setattr(litellm, "completion", fake_completion)
+    monkeypatch.setattr(litellm, "completion_cost", lambda **_kw: 0.0)
+
+    completion_text_sync(
+        litellm_model=model,
+        messages=[{"role": "user", "content": "hi"}],
+        api_key="test",
+        max_tokens=None,
+        temperature=0.0,
+        timeout=30.0,
+        force_json_response=True,
+    )
+
+    assert captured.get("max_tokens") == 16384
+    assert "temperature" not in captured
+
+
 def test_completion_text_sync_gpt56_retries_truncated_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

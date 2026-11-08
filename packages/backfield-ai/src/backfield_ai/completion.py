@@ -22,6 +22,9 @@ _MAX_OUTPUT_RETRY_CEILING = 1_048_576
 # GPT-5.6 omits a usable provider default for visible JSON; LiteLLM remaps this to
 # ``max_completion_tokens`` (visible + reasoning tokens).
 _GPT56_DEFAULT_MAX_COMPLETION_TOKENS = 8192
+# Claude 5 on Bedrock: an omitted cap leaves a provider default too small for
+# extraction JSON (place lists were cut off mid-string around 5k characters).
+_CLAUDE5_DEFAULT_MAX_TOKENS = 16384
 
 
 @dataclass(frozen=True)
@@ -257,11 +260,13 @@ def _assistant_json_is_parseable(text: str) -> bool:
 
 
 def _effective_max_tokens(litellm_model: str, max_tokens: int | None) -> int | None:
-    """Caller cap, or a GPT-5.6 default so JSON extract is not left uncapped."""
+    """Caller cap, or a GPT-5.6 / Claude 5 default so JSON extract is not left uncapped."""
     if max_tokens is not None:
         return max_tokens
     if _is_gpt56_family(litellm_model):
         return _GPT56_DEFAULT_MAX_COMPLETION_TOKENS
+    if _rejects_temperature(_provider_model_id_from_litellm(litellm_model)):
+        return _CLAUDE5_DEFAULT_MAX_TOKENS
     return None
 
 
