@@ -31,8 +31,13 @@ def embed_semantic_search_query(
     project_id: int,
     query: str,
     use_hyde: bool = False,
+    model_config_id: str | None = None,
 ) -> SemanticQueryEmbedding:
-    """Embed one search query using the project/org default semantic.embedding model."""
+    """Embed one search query with ``model_config_id``, else the semantic.embedding default.
+
+    Models that distinguish queries from documents (Voyage context models) embed the query
+    as a query, or a HyDE passage as a document, since it stands in for one.
+    """
     text = query.strip()
     if not text:
         raise EmbeddingConfigurationError("Search query text is required.")
@@ -49,12 +54,14 @@ def embed_semantic_search_query(
         )
         embed_text = hypothetical_document
 
-    model_config_id = resolve_semantic_embedding_model_config_id(session, project_id)
+    if not model_config_id:
+        model_config_id = resolve_semantic_embedding_model_config_id(session, project_id)
     result = embed_texts_for_model_config(
         session,
         project_id=project_id,
         model_config_id=model_config_id,
         texts=[embed_text],
+        input_type="document" if use_hyde else "query",
     )
     if result.batch_error or not result.items or result.items[0].vector is None:
         message = result.batch_error or result.items[0].error_message or "Query embedding failed."

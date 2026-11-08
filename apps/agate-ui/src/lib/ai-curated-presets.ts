@@ -24,6 +24,7 @@ export const CURATED_PROVIDER_SECTION_ORDER = [
   'moonshot',
   'cohere',
   'azure',
+  'voyage',
 ] as const
 
 export function curatedProviderSectionTitle(providerKey: string): string {
@@ -40,6 +41,7 @@ export function curatedProviderSectionTitle(providerKey: string): string {
   if (k === 'moonshot') return 'Moonshot / Kimi'
   if (k === 'cohere') return 'Cohere'
   if (k === 'azure') return 'Azure OpenAI'
+  if (k === 'voyage') return 'Voyage AI'
   const raw = providerKey.trim()
   return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : 'Other'
 }

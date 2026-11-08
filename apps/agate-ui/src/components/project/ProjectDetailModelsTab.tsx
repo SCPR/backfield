@@ -23,10 +23,12 @@ import {
   type ProjectEffectiveAiModelRow,
 } from '@/lib/core-api'
 import {
+  ARTICLE_EMBEDDING_DEFAULT_ROLE,
   GENERATIVE_DEFAULT_ROLE,
   modelKindLabel,
   normalizeModelKind,
   SEMANTIC_EMBEDDING_DEFAULT_ROLE,
+  supportsArticlePassageSearch,
 } from '@/lib/ai-model-catalog-ui'
 import { dispatchProjectAiModelsChanged } from '@/lib/projectAiModelsEvents'
 import { partitionProjectModelsByKind } from '@/lib/project-models-ui'
@@ -58,12 +60,18 @@ interface DefaultToggleOptions {
   soleEnabledId: string | null
   onSetDefault: (modelConfigId: string) => void
   lockDefaultMessage: string
+  /** Embeddings only: the model used for article passage search. */
+  articleSearch?: {
+    modelId: string | null
+    onSet: (modelConfigId: string) => void
+  }
 }
 
 export default function ProjectDetailModelsTab({ projectId }: ProjectDetailModelsTabProps) {
   const { showError, showConfirm, showMessage } = useAppMessage()
   const [rows, setRows] = useState<ProjectEffectiveAiModelRow[]>([])
   const [semanticDefaultModelId, setSemanticDefaultModelId] = useState<string | null>(null)
+  const [articleSearchModelId, setArticleSearchModelId] = useState<string | null>(null)
   const [generativeDefaultModelId, setGenerativeDefaultModelId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [listError, setListError] = useState<string | null>(null)
@@ -101,12 +109,15 @@ export default function ProjectDetailModelsTab({ projectId }: ProjectDetailModel
       setRows(data)
       const semantic = defaults.find((d) => d.role === SEMANTIC_EMBEDDING_DEFAULT_ROLE)
       setSemanticDefaultModelId(semantic?.model_config_id ?? null)
+      const articleSearch = defaults.find((d) => d.role === ARTICLE_EMBEDDING_DEFAULT_ROLE)
+      setArticleSearchModelId(articleSearch?.model_config_id ?? null)
       const generative = defaults.find((d) => d.role === GENERATIVE_DEFAULT_ROLE)
       setGenerativeDefaultModelId(generative?.model_config_id ?? null)
     } catch (e) {
       console.error(e)
       setRows([])
       setSemanticDefaultModelId(null)
+      setArticleSearchModelId(null)
       setGenerativeDefaultModelId(null)
       setListError('Could not load models for this project.')
     } finally {
@@ -137,6 +148,27 @@ export default function ProjectDetailModelsTab({ projectId }: ProjectDetailModel
       }
     },
     [projectId, showError],
+  )
+
+  const setArticleSearchModel = useCallback(
+    async (modelConfigId: string) => {
+      try {
+        setBusyModelId(modelConfigId)
+        await putProjectAiModelDefaultRole(projectId, ARTICLE_EMBEDDING_DEFAULT_ROLE, modelConfigId)
+        setArticleSearchModelId(modelConfigId)
+        dispatchProjectAiModelsChanged(projectId)
+        showMessage(
+          'Articles are indexed for search as they are processed. Run backfield index-article-passages to index existing articles.',
+          { title: 'Article search model set' },
+        )
+      } catch (e) {
+        console.error(e)
+        showError('We could not set the article search model. Try again.')
+      } finally {
+        setBusyModelId(null)
+      }
+    },
+    [projectId, showError, showMessage],
   )
 
   const setGenerativeDefault = useCallback(
@@ -324,6 +356,11 @@ export default function ProjectDetailModelsTab({ projectId }: ProjectDetailModel
     const busy = busyModelId === row.id
     const override = row.project_credential_override_configured ?? false
     const isDefault = defaultToggle ? defaultToggle.defaultModelId === row.id : false
+    const articleSearch =
+      defaultToggle?.articleSearch && supportsArticlePassageSearch(row)
+        ? defaultToggle.articleSearch
+        : undefined
+    const isArticleSearch = articleSearch ? articleSearch.modelId === row.id : false
     const lockDefaultOn =
       defaultToggle !== undefined &&
       defaultToggle.soleEnabledId === row.id &&
@@ -346,6 +383,7 @@ export default function ProjectDetailModelsTab({ projectId }: ProjectDetailModel
             {isDefault && defaultToggle ? (
               <Badge variant="secondary">Default</Badge>
             ) : null}
+            {isArticleSearch ? <Badge variant="secondary">Article search</Badge> : null}
             {override ? <OverriddenBadge /> : <Badge variant="success">Configured</Badge>}
           </div>
         </div>
@@ -383,6 +421,25 @@ export default function ProjectDetailModelsTab({ projectId }: ProjectDetailModel
                 }}
               >
                 Default
+              </Button>
+            ) : null}
+            {articleSearch && row.project_enabled ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className={
+                  isArticleSearch
+                    ? 'border-black bg-black text-white hover:bg-black/90'
+                    : undefined
+                }
+                disabled={busy || isArticleSearch}
+                aria-pressed={isArticleSearch}
+                onClick={() => {
+                  if (!isArticleSearch) articleSearch.onSet(row.id)
+                }}
+              >
+                Article search
               </Button>
             ) : null}
             <Button
@@ -521,7 +578,7 @@ export default function ProjectDetailModelsTab({ projectId }: ProjectDetailModel
               {hasEmbedding
                 ? renderKindSection(
                     'Embeddings',
-                    'Vector models for semantic search across saved mentions. One enabled model is used automatically when it is the only choice.',
+                    'Vector models for semantic search. Default covers saved mentions (one enabled model is used automatically when it is the only choice). Article search splits articles into passages and needs a Voyage context model; without one, article search uses one embedding per article.',
                     partitioned.embedding.enabled,
                     partitioned.embedding.disabled,
                     {
@@ -531,6 +588,12 @@ export default function ProjectDetailModelsTab({ projectId }: ProjectDetailModel
                         void setSemanticDefault(id)
                       },
                       lockDefaultMessage: 'Only embedding model enabled for this project.',
+                      articleSearch: {
+                        modelId: articleSearchModelId,
+                        onSet: (id) => {
+                          void setArticleSearchModel(id)
+                        },
+                      },
                     },
                   )
                 : null}

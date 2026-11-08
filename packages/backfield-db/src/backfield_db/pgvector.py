@@ -12,6 +12,7 @@ _FALLBACK_EMBEDDING_DIMENSIONS = 1536
 # Every pgvector embedding column, as (table, column).
 EMBEDDING_VECTOR_COLUMNS: tuple[tuple[str, str], ...] = (
     ("substrate_article_embedding", "embedding"),
+    ("substrate_article_passage", "embedding"),
     ("substrate_image_embedding", "embedding"),
     ("substrate_person_semantic_document", "embedding"),
     ("substrate_location_semantic_document", "embedding"),

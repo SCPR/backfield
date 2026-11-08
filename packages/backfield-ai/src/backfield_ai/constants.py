@@ -27,6 +27,8 @@ INTEGRATION_KEY_AI_PROVIDER_ANTHROPIC = "ai.provider.anthropic"
 INTEGRATION_KEY_AI_PROVIDER_GEMINI = "ai.provider.gemini"
 INTEGRATION_KEY_AI_PROVIDER_OPENROUTER = "ai.provider.openrouter"
 INTEGRATION_KEY_AI_PROVIDER_AZURE = "ai.provider.azure"
+# Embedding-only provider (Voyage AI makes embedding and rerank models).
+INTEGRATION_KEY_AI_PROVIDER_VOYAGE = "ai.provider.voyage"
 
 ORG_AI_PROVIDER_INTEGRATION_KEYS: frozenset[str] = frozenset(
     {
@@ -35,6 +37,7 @@ ORG_AI_PROVIDER_INTEGRATION_KEYS: frozenset[str] = frozenset(
         INTEGRATION_KEY_AI_PROVIDER_GEMINI,
         INTEGRATION_KEY_AI_PROVIDER_OPENROUTER,
         INTEGRATION_KEY_AI_PROVIDER_AZURE,
+        INTEGRATION_KEY_AI_PROVIDER_VOYAGE,
     }
 )
 
@@ -47,6 +50,7 @@ AI_PROVIDER_SLUG_BY_INTEGRATION_KEY: dict[str, str] = {
     INTEGRATION_KEY_AI_PROVIDER_GEMINI: "gemini",
     INTEGRATION_KEY_AI_PROVIDER_OPENROUTER: "openrouter",
     INTEGRATION_KEY_AI_PROVIDER_AZURE: "azure",
+    INTEGRATION_KEY_AI_PROVIDER_VOYAGE: "voyage",
 }
 
 
@@ -105,15 +109,24 @@ AI_DEFAULT_ROLE_GEOCODE_ROUTER = "geocode.router"
 AI_DEFAULT_ROLE_GEOCODE_EVALUATION = "geocode.evaluation"
 
 AI_DEFAULT_ROLE_SEMANTIC_EMBEDDING = "semantic.embedding"
+# Article passage search: articles are split into passages and embedded with this model
+# (a Voyage context model chunks articles itself). Unset means article search keeps using
+# whole-article embeddings from the Embed Text node.
+AI_DEFAULT_ROLE_SEMANTIC_ARTICLE_EMBEDDING = "semantic.article_embedding"
 # Legacy HyDE role; still read by resolver for existing DB rows.
 AI_DEFAULT_ROLE_SEMANTIC_HYDE = "semantic.hyde"
 AI_DEFAULT_ROLE_GENERATIVE_DEFAULT = "generative.default"
+
+EMBEDDING_DEFAULT_ROLES: frozenset[str] = frozenset(
+    {AI_DEFAULT_ROLE_SEMANTIC_EMBEDDING, AI_DEFAULT_ROLE_SEMANTIC_ARTICLE_EMBEDDING}
+)
 
 PROJECT_AI_DEFAULT_ROLES: frozenset[str] = frozenset(
     {
         AI_DEFAULT_ROLE_GEOCODE_ROUTER,
         AI_DEFAULT_ROLE_GEOCODE_EVALUATION,
         AI_DEFAULT_ROLE_SEMANTIC_EMBEDDING,
+        AI_DEFAULT_ROLE_SEMANTIC_ARTICLE_EMBEDDING,
         AI_DEFAULT_ROLE_GENERATIVE_DEFAULT,
     }
 )

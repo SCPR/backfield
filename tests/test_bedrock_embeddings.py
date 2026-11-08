@@ -84,6 +84,7 @@ def test_configured_dimensions_reads_env(monkeypatch: pytest.MonkeyPatch) -> Non
 def test_every_embedding_column_is_listed_for_resizing() -> None:
     from backfield_db import (
         SubstrateArticleEmbedding,
+        SubstrateArticlePassage,
         SubstrateImageEmbedding,
         SubstrateLocationSemanticDocument,
         SubstrateOrganizationSemanticDocument,
@@ -94,6 +95,7 @@ def test_every_embedding_column_is_listed_for_resizing() -> None:
         model.__tablename__
         for model in (
             SubstrateArticleEmbedding,
+            SubstrateArticlePassage,
             SubstrateImageEmbedding,
             SubstratePersonSemanticDocument,
             SubstrateLocationSemanticDocument,

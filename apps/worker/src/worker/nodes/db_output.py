@@ -12,6 +12,7 @@ from typing import Any
 
 from agate_runtime.output_node import consolidated_body_from_dboutput
 from agate_utils.llm import call_llm
+from backfield_ai.article_passages import index_article_passages
 from backfield_db import AgateRun
 from backfield_db.deadlock import is_postgres_deadlock
 from backfield_entities.connections.db_output import run_auto_connections_for_db_output
@@ -46,6 +47,28 @@ logger = logging.getLogger(__name__)
 
 _DBOUTPUT_DEADLOCK_MAX_ATTEMPTS = 4
 _DBOUTPUT_PERSIST_LOCK_TTL_S = int(os.getenv("DBOUTPUT_PERSIST_LOCK_TTL_S", "1800"))
+
+
+def _index_article_passages_for_db_output(
+    session: Session,
+    *,
+    project_id: int,
+    article_id: int,
+) -> dict[str, Any]:
+    """Re-embed the article's search passages when the project sets an article search model.
+
+    Runs in a savepoint so a failed embedding call never rolls back the article itself;
+    unchanged articles are skipped by the indexer.
+    """
+    try:
+        with session.begin_nested():
+            summary = index_article_passages(
+                session, project_id=project_id, article_ids=[article_id]
+            )
+        return summary.as_dict()
+    except Exception as exc:  # noqa: BLE001 — search indexing must not fail the ingest
+        logger.warning("Article passage indexing failed for article %s: %s", article_id, exc)
+        return {"status": "failed", "errors": [str(exc)[:500]]}
 
 
 def _dboutput_max_concurrent_persists() -> int:
@@ -222,6 +245,10 @@ def _persist_db_output_in_session(
     else:
         semantic_indexing = build_semantic_indexing_summary(enabled=False)
 
+    article_passages = _index_article_passages_for_db_output(
+        session, project_id=project_id, article_id=article_id
+    )
+
     article_embedding_persist = persist_article_embedding_after_db_output(
         session,
         article_id=article_id,
@@ -306,6 +333,7 @@ def _persist_db_output_in_session(
             "domains": domain_summaries,
         },
         "semantic_indexing": semantic_indexing,
+        "article_passages": article_passages,
         "article_embedding_persist": article_embedding_persist,
         "article_metadata_persist": article_metadata_persist,
         "image_embeddings_persist": image_embeddings_persist,

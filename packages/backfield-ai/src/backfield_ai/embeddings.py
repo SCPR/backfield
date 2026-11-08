@@ -15,6 +15,7 @@ from sqlmodel import Session
 
 from backfield_ai.constants import (
     AI_MODEL_KIND_EMBEDDING,
+    COST_ESTIMATE_SOURCE_LITELLM,
     COST_ESTIMATE_SOURCE_UNAVAILABLE,
     DEFAULT_AI_CURRENCY,
 )
@@ -22,6 +23,14 @@ from backfield_ai.cost_estimate import litellm_estimated_cost_from_response
 from backfield_ai.credentials import organization_llm_api_keys
 from backfield_ai.litellm_model import effective_litellm_model_row
 from backfield_ai.tracking_context import persist_llm_attempt
+from backfield_ai.voyage_context import (
+    MAX_INPUTS_PER_REQUEST,
+    VoyageContextError,
+    contextualized_embed,
+    is_voyage_context_model,
+    voyage_context_model_name,
+    voyage_token_cost,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -220,6 +229,89 @@ def _persist_embedding_attempt_if_tracked(
     )
 
 
+def _embed_texts_voyage_context(
+    *,
+    litellm_model: str,
+    texts: list[str],
+    api_key: str | None,
+    api_base: str | None,
+    timeout: float,
+    input_type: str | None,
+) -> LiteLLMEmbeddingBatchResult:
+    from backfield_db.pgvector import configured_embedding_dimensions
+
+    provider, provider_model_id = _provider_fields(litellm_model)
+    model = voyage_context_model_name(litellm_model) or provider_model_id
+
+    def _failed(msg: str, latency_ms: int) -> LiteLLMEmbeddingBatchResult:
+        return LiteLLMEmbeddingBatchResult(
+            litellm_model=litellm_model,
+            provider=provider,
+            provider_model_id=provider_model_id,
+            dimensions=None,
+            items=[
+                EmbeddingItemResult(index=i, vector=None, error_code="provider", error_message=msg)
+                for i in range(len(texts))
+            ],
+            prompt_tokens=None,
+            total_tokens=None,
+            estimated_cost=None,
+            currency=DEFAULT_AI_CURRENCY,
+            cost_estimate_incomplete=True,
+            cost_estimate_source=COST_ESTIMATE_SOURCE_UNAVAILABLE,
+            latency_ms=latency_ms,
+            batch_error=msg,
+        )
+
+    if not api_key:
+        return _failed("Voyage context models need a Voyage API key.", 0)
+    t0 = time.perf_counter()
+    vectors: list[list[float]] = []
+    tokens = 0
+    tokens_known = True
+    try:
+        for start in range(0, len(texts), MAX_INPUTS_PER_REQUEST):
+            part = texts[start : start + MAX_INPUTS_PER_REQUEST]
+            resp = contextualized_embed(
+                api_key=api_key,
+                model=model,
+                inputs=[[t] for t in part],
+                input_type=input_type,
+                output_dimension=configured_embedding_dimensions(),
+                api_base=api_base,
+                timeout=timeout,
+            )
+            vectors.extend(doc[0].vector for doc in resp.documents)
+            if resp.total_tokens is None:
+                tokens_known = False
+            else:
+                tokens += resp.total_tokens
+    except VoyageContextError as exc:
+        msg = str(exc)[:2000]
+        logger.warning("Voyage context embedding failed for model=%s: %s", litellm_model, msg)
+        return _failed(msg, int((time.perf_counter() - t0) * 1000))
+
+    total = tokens if tokens_known else None
+    cost = voyage_token_cost(litellm_model, total)
+    return LiteLLMEmbeddingBatchResult(
+        litellm_model=litellm_model,
+        provider=provider,
+        provider_model_id=provider_model_id,
+        dimensions=len(vectors[0]) if vectors else None,
+        items=[EmbeddingItemResult(index=i, vector=v) for i, v in enumerate(vectors)],
+        prompt_tokens=total,
+        total_tokens=total,
+        estimated_cost=cost,
+        currency=DEFAULT_AI_CURRENCY,
+        cost_estimate_incomplete=cost is None,
+        cost_estimate_source=COST_ESTIMATE_SOURCE_LITELLM
+        if cost is not None
+        else COST_ESTIMATE_SOURCE_UNAVAILABLE,
+        latency_ms=int((time.perf_counter() - t0) * 1000),
+        batch_error=None,
+    )
+
+
 def embed_texts_sync(
     *,
     litellm_model: str,
@@ -230,8 +322,13 @@ def embed_texts_sync(
     model_config_id: str | None = None,
     track_attempt: bool = True,
     model_config_json: dict[str, Any] | None = None,
+    input_type: str | None = None,
 ) -> LiteLLMEmbeddingBatchResult:
-    """Embed a batch of strings via LiteLLM (no Backfield-level retries)."""
+    """Embed a batch of strings via LiteLLM (no Backfield-level retries).
+
+    ``input_type`` (``query`` or ``document``) is only sent to Voyage context models, which
+    don't go through LiteLLM; each text is embedded as its own one-chunk document.
+    """
     if not texts:
         raise EmbeddingConfigurationError("At least one text is required for embedding.")
 
@@ -240,6 +337,18 @@ def embed_texts_sync(
         raise EmbeddingConfigurationError("litellm_model is empty.")
 
     provider, provider_model_id = _provider_fields(lm)
+    if is_voyage_context_model(lm):
+        result = _embed_texts_voyage_context(
+            litellm_model=lm,
+            texts=texts,
+            api_key=api_key,
+            api_base=api_base,
+            timeout=timeout,
+            input_type=input_type,
+        )
+        if track_attempt:
+            _persist_embedding_attempt_if_tracked(result, model_config_id=model_config_id)
+        return result
     routed_model, route_kwargs = bedrock_embedding_route(lm, model_config_json)
     t0 = time.perf_counter()
 
@@ -250,6 +359,11 @@ def embed_texts_sync(
         "num_retries": 0,
         **route_kwargs,
     }
+    if routed_model.lower().startswith("voyage/"):
+        # Voyage models offer several output sizes; ask for the one the vector columns hold.
+        from backfield_db.pgvector import configured_embedding_dimensions
+
+        kwargs["dimensions"] = configured_embedding_dimensions()
     if api_key:
         kwargs["api_key"] = api_key
     if api_base and str(api_base).strip():
@@ -395,6 +509,8 @@ def _api_key_for_catalog_provider(
         return keys.get("OPENROUTER_API_KEY")
     if prov == "azure":
         return keys.get("AZURE_API_KEY")
+    if prov == "voyage":
+        return keys.get("VOYAGE_API_KEY")
     return (
         keys.get("OPENAI_API_KEY")
         or keys.get("ANTHROPIC_API_KEY")
@@ -504,6 +620,7 @@ def embed_texts_for_model_config(
     model_config_id: str,
     texts: list[str],
     timeout: float = 120.0,
+    input_type: str | None = None,
 ) -> LiteLLMEmbeddingBatchResult:
     """Resolve catalog auth, then embed via LiteLLM without holding a DB connection."""
     auth = _resolve_embedding_auth(
@@ -519,4 +636,5 @@ def embed_texts_for_model_config(
         timeout=timeout,
         model_config_id=auth.model_config_id,
         model_config_json=auth.config_json,
+        input_type=input_type,
     )
