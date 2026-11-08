@@ -136,6 +136,17 @@ def test_specific_nature_subsumes_broader_natures() -> None:
     assert result.stats.subsumed == 2
 
 
+def test_member_of_subsumes_works_for() -> None:
+    candidate = _candidate()
+    result = resolve_auto_connection_proposals(
+        [_edge("works_for"), _edge("member_of")],
+        candidates={candidate.candidate_id: candidate},
+    )
+
+    assert [edge.nature for edge in result.edges] == ["member_of"]
+    assert result.stats.subsumed == 1
+
+
 def test_independent_natures_coexist() -> None:
     candidate = _candidate()
     result = resolve_auto_connection_proposals(

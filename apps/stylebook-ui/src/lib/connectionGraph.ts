@@ -204,72 +204,87 @@ export function classifyConnectionHop(
 
 export const GRAPH_NODE_LAYOUT_WIDTH = 176
 export const GRAPH_NODE_LAYOUT_HEIGHT = 56
-const GRAPH_GRID_GAP_X = 28
-const GRAPH_GRID_GAP_Y = 36
+/** Smallest ring radius: leaves room for an edge label between the subject and a neighbor. */
+const GRAPH_RING_MIN_RADIUS = 240
+/** Arc length reserved per neighbor so adjacent nodes and labels don't collide. */
+const GRAPH_RING_ARC_PER_NEIGHBOR = 230
+/** Nodes are wide and short, so the ring is an ellipse stretched horizontally. */
+const GRAPH_RING_X_STRETCH = 1.35
+const GRAPH_RING_Y_STRETCH = 0.85
 
-export function gridColumns(count: number): number {
-  if (count <= 1) return 1
-  if (count <= 4) return 2
-  if (count <= 9) return 3
-  if (count <= 16) return 4
-  if (count <= 25) return 5
-  return 6
-}
+export type GraphPoint = { x: number; y: number }
 
-function gridWidth(cols: number, count: number): number {
-  const itemsInWidestRow = Math.min(cols, count)
-  if (itemsInWidestRow <= 1) return GRAPH_NODE_LAYOUT_WIDTH
-  return (
-    (itemsInWidestRow - 1) * (GRAPH_NODE_LAYOUT_WIDTH + GRAPH_GRID_GAP_X) +
-    GRAPH_NODE_LAYOUT_WIDTH
+export function ringRadius(neighborCount: number): number {
+  return Math.max(
+    GRAPH_RING_MIN_RADIUS,
+    (neighborCount * GRAPH_RING_ARC_PER_NEIGHBOR) / (2 * Math.PI),
   )
 }
 
-function gridHeight(rows: number): number {
-  if (rows <= 1) return GRAPH_NODE_LAYOUT_HEIGHT
-  return (rows - 1) * (GRAPH_NODE_LAYOUT_HEIGHT + GRAPH_GRID_GAP_Y) + GRAPH_NODE_LAYOUT_HEIGHT
-}
-
-/** Place neighbor node centers in a compact grid above the subject. */
-export function layoutNeighborGrid(
+/**
+ * Place neighbor node centers evenly on an ellipse around the subject at (centerX, centerY).
+ * Keys keep their order around the ring, clockwise from the top (from the right for one or
+ * two neighbors, so a pair sits either side of the subject rather than above and below).
+ */
+export function layoutNeighborRing(
   neighborKeys: string[],
   centerX: number,
-  topY: number,
-): Map<string, { x: number; y: number }> {
-  const positions = new Map<string, { x: number; y: number }>()
-  if (neighborKeys.length === 0) return positions
-
-  const cols = gridColumns(neighborKeys.length)
-  const rows = Math.ceil(neighborKeys.length / cols)
-
+  centerY: number,
+): Map<string, GraphPoint> {
+  const positions = new Map<string, GraphPoint>()
+  const count = neighborKeys.length
+  if (count === 0) return positions
+  const radius = ringRadius(count)
+  const start = count <= 2 ? 0 : -Math.PI / 2
   neighborKeys.forEach((key, index) => {
-    const row = Math.floor(index / cols)
-    const col = index % cols
-    const itemsInRow = Math.min(cols, neighborKeys.length - row * cols)
-    const rowWidth = gridWidth(cols, itemsInRow)
-    const x = centerX - rowWidth / 2 + col * (GRAPH_NODE_LAYOUT_WIDTH + GRAPH_GRID_GAP_X)
-    const y = topY + row * (GRAPH_NODE_LAYOUT_HEIGHT + GRAPH_GRID_GAP_Y)
-    positions.set(key, { x, y })
+    const angle = start + (2 * Math.PI * index) / count
+    positions.set(key, {
+      x: Math.round(centerX + Math.cos(angle) * radius * GRAPH_RING_X_STRETCH),
+      y: Math.round(centerY + Math.sin(angle) * radius * GRAPH_RING_Y_STRETCH),
+    })
   })
-
   return positions
 }
 
-export function egoGraphLayoutMetrics(neighborCount: number): {
-  centerX: number
-  centerY: number
-  neighborTopY: number
-  canvasMinHeight: number
-} {
-  const cols = gridColumns(neighborCount)
-  const rows = Math.max(1, Math.ceil(Math.max(neighborCount, 1) / cols))
-  const neighborGridHeight = gridHeight(rows)
-  const centerX = 500
-  const neighborTopY = 48
-  const centerY =
-    neighborTopY + neighborGridHeight + GRAPH_NODE_LAYOUT_HEIGHT + GRAPH_GRID_GAP_Y + 24
-  const canvasMinHeight = centerY + GRAPH_NODE_LAYOUT_HEIGHT + 48
-  return { centerX, centerY, neighborTopY, canvasMinHeight }
+export type GraphSide = "top" | "right" | "bottom" | "left"
+
+const OPPOSITE_SIDE: Record<GraphSide, GraphSide> = {
+  top: "bottom",
+  bottom: "top",
+  left: "right",
+  right: "left",
+}
+
+/**
+ * Which side of each node an edge should leave and enter by, so lines run directly between
+ * the two nodes instead of looping around them. Compares the offset against the node's
+ * aspect ratio: a neighbor up and to the right of a wide node attaches at the top.
+ */
+export function facingSides(
+  from: GraphPoint,
+  to: GraphPoint,
+): { sourceSide: GraphSide; targetSide: GraphSide } {
+  const dx = to.x - from.x
+  const dy = to.y - from.y
+  const horizontal = Math.abs(dx) / GRAPH_NODE_LAYOUT_WIDTH >= Math.abs(dy) / GRAPH_NODE_LAYOUT_HEIGHT
+  const sourceSide: GraphSide = horizontal
+    ? dx >= 0
+      ? "right"
+      : "left"
+    : dy >= 0
+      ? "bottom"
+      : "top"
+  return { sourceSide, targetSide: OPPOSITE_SIDE[sourceSide] }
+}
+
+/** Order neighbors so each entity type forms one arc of the ring, alphabetical within it. */
+export function sortNeighborsForRing(neighbors: GraphEntityRef[]): GraphEntityRef[] {
+  const typeOrder: Record<string, number> = { organization: 0, person: 1, location: 2, work: 3 }
+  return [...neighbors].sort(
+    (a, b) =>
+      (typeOrder[a.entityType] ?? 9) - (typeOrder[b.entityType] ?? 9) ||
+      a.displayName.localeCompare(b.displayName, undefined, { sensitivity: "base" }),
+  )
 }
 
 export function formatNatureLabel(nature?: string | null): string | null {

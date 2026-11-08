@@ -175,9 +175,13 @@ See the full **Existing-data migration plan** in
 - Org→org **`plays_for`** (manual team→school pattern in production) remaps to **`team_of`**.
 - Existing type-granularity constraints (e.g. `located_at` location types, person→location
   address ban) carry over unchanged onto the registry entries.
-- Subsumption pairs generalize with the catalog: `leads` > `works_for` > `member_of`;
-  `located_at` > `based_in`; `plays_for` > `member_of` and `coaches` > `works_for` for sports
-  teams.
+- Subsumption pairs generalize with the catalog: `leads` > `member_of` > `works_for` (a
+  council or board member is not separately its employee); `located_at` > `based_in`;
+  `plays_for` > `member_of` and `coaches` > `works_for` for sports teams.
+- Subsumption also holds across articles: when a stored open edge for the same ordered pair
+  has the more specific nature, the writer cites the new article on that edge, and a new
+  specific edge absorbs the evidence of stored broader ones (which are then deleted).
+  `backfield collapse-subsumed-connections` applies the same rule to existing edges.
 - The current prompt rule mapping athletes to `member_of` a `sports_team` retargets to
   `plays_for` (and coaches to `coaches`).
 - Do **not** auto-remap null-nature descriptions to new slugs (`holds_office_in`, `owns`, …)
