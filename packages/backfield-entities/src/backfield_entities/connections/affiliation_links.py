@@ -10,18 +10,32 @@ from backfield_entities.connections.types import AutoConnectionEdgeProposal, Lin
 from backfield_entities.connections.validation import validate_auto_connection_candidate
 
 
+#: Bodies whose named affiliates are members, not employees: a representative's affiliation
+#: "U.S. House" or a party tag. Staff of these bodies still work for them.
+MEMBERSHIP_ORGANIZATION_TYPES: frozenset[str] = frozenset({"legislative_body", "political_party"})
+STAFF_PERSON_TYPES: frozenset[str] = frozenset({"political_staff"})
+
+
+def affiliation_nature(person_type: str | None, organization_type: str | None) -> str:
+    """Nature for a person→organization link established by the person's affiliation."""
+    org_type = (organization_type or "").strip().lower()
+    kind = (person_type or "").strip().lower()
+    if org_type == "sports_team":
+        if kind == "coach":
+            return "coaches"
+        if kind in {"athlete", "player"}:
+            return "plays_for"
+        return "works_for"
+    if org_type in MEMBERSHIP_ORGANIZATION_TYPES and kind not in STAFF_PERSON_TYPES:
+        return "member_of"
+    return "works_for"
+
+
 def _nature_for_affiliation_link(
     person: LinkedEntitySnapshot,
     org: LinkedEntitySnapshot,
 ) -> str:
-    if (org.organization_type or "").strip().lower() == "sports_team":
-        person_type = (person.person_type or "").strip().lower()
-        if person_type == "coach":
-            return "coaches"
-        if person_type in {"athlete", "player"}:
-            return "plays_for"
-        return "works_for"
-    return "works_for"
+    return affiliation_nature(person.person_type, org.organization_type)
 
 
 def _affiliation_edge_description(
@@ -36,6 +50,8 @@ def _affiliation_edge_description(
         return f"{person.label} coaches {org.label}."
     if nature == "works_for":
         return f"{person.label} works for {org.label}."
+    if nature == "member_of":
+        return f"{person.label} is a member of {org.label}."
     return f"{person.label} is affiliated with {org.label}."
 
 

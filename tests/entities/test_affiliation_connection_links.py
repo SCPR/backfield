@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from backfield_entities.connections.affiliation_links import (
+    affiliation_nature,
     infer_affiliation_person_organization_edges,
 )
 from backfield_entities.connections.match_tokens import (
@@ -225,3 +226,30 @@ def test_collect_pair_snippets_matches_team_nickname_not_full_label() -> None:
     assert snippets
     assert "Phillies" in snippets[0]
     assert "Kyle Schwarber" in snippets[0]
+
+
+def test_affiliation_nature_treats_legislators_and_partisans_as_members() -> None:
+    assert affiliation_nature("elected_official", "legislative_body") == "member_of"
+    assert affiliation_nature(None, "legislative_body") == "member_of"
+    assert affiliation_nature("other", "political_party") == "member_of"
+    # Staff of a legislature or party are employees.
+    assert affiliation_nature("political_staff", "legislative_body") == "works_for"
+    assert affiliation_nature("government_official", "government") == "works_for"
+
+
+def test_infer_member_of_edge_for_representative_house_affiliation() -> None:
+    article_text = "Rep. Young Kim, R-La Habra, said the bill would pass."
+    person = _person(
+        label="Young Kim",
+        affiliation="U.S. House of Representatives",
+        person_type="elected_official",
+        snippets=(article_text,),
+    )
+    org = _org(label="U.S. House of Representatives", organization_type="legislative_body")
+    edges = infer_affiliation_person_organization_edges(
+        people=(person,),
+        organizations=(org,),
+        article_text=article_text,
+    )
+    assert [edge.nature for edge in edges] == ["member_of"]
+    assert edges[0].description == "Young Kim is a member of U.S. House of Representatives."

@@ -14,6 +14,7 @@ from backfield_cli import migrate_connection_kg as migrate_connection_kg_cmd
 from backfield_cli import organization as organization_cmd
 from backfield_cli import repair_orphan_connections as repair_orphan_connections_cmd
 from backfield_cli import repair_s3_article_sources as repair_s3_article_sources_cmd
+from backfield_cli import retype_membership_connections as retype_membership_connections_cmd
 from backfield_cli import seed as seed_cmd
 from backfield_cli import stack_cmd
 from backfield_cli import tenancy_audit as tenancy_audit_cmd
@@ -28,6 +29,7 @@ def main(argv: list[str] | None = None) -> int:
     doctor_cmd.register_subcommand(subparsers)
     backfill_connections_cmd.register_subcommand(subparsers)
     collapse_subsumed_connections_cmd.register_subcommand(subparsers)
+    retype_membership_connections_cmd.register_subcommand(subparsers)
     tenancy_audit_cmd.register_subcommand(subparsers)
     repair_orphan_connections_cmd.register_subcommand(subparsers)
     repair_s3_article_sources_cmd.register_subcommand(subparsers)
