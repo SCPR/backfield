@@ -24,6 +24,8 @@ INTEGRATION_KEY_AI_PROVIDER_ANTHROPIC = "ai.provider.anthropic"
 INTEGRATION_KEY_AI_PROVIDER_GEMINI = "ai.provider.gemini"
 INTEGRATION_KEY_AI_PROVIDER_OPENROUTER = "ai.provider.openrouter"
 INTEGRATION_KEY_AI_PROVIDER_AZURE = "ai.provider.azure"
+# Embedding-only provider (Voyage AI makes embedding and rerank models).
+INTEGRATION_KEY_AI_PROVIDER_VOYAGE = "ai.provider.voyage"
 
 ORG_AI_PROVIDER_INTEGRATION_KEYS: frozenset[str] = frozenset(
     {
@@ -32,6 +34,7 @@ ORG_AI_PROVIDER_INTEGRATION_KEYS: frozenset[str] = frozenset(
         INTEGRATION_KEY_AI_PROVIDER_GEMINI,
         INTEGRATION_KEY_AI_PROVIDER_OPENROUTER,
         INTEGRATION_KEY_AI_PROVIDER_AZURE,
+        INTEGRATION_KEY_AI_PROVIDER_VOYAGE,
     }
 )
 
@@ -44,6 +47,7 @@ AI_PROVIDER_SLUG_BY_INTEGRATION_KEY: dict[str, str] = {
     INTEGRATION_KEY_AI_PROVIDER_GEMINI: "gemini",
     INTEGRATION_KEY_AI_PROVIDER_OPENROUTER: "openrouter",
     INTEGRATION_KEY_AI_PROVIDER_AZURE: "azure",
+    INTEGRATION_KEY_AI_PROVIDER_VOYAGE: "voyage",
 }
 
 

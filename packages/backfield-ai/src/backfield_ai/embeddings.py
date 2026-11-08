@@ -250,6 +250,11 @@ def embed_texts_sync(
         "num_retries": 0,
         **route_kwargs,
     }
+    if routed_model.lower().startswith("voyage/"):
+        # Voyage models offer several output sizes; ask for the one the vector columns hold.
+        from backfield_db.pgvector import configured_embedding_dimensions
+
+        kwargs["dimensions"] = configured_embedding_dimensions()
     if api_key:
         kwargs["api_key"] = api_key
     if api_base and str(api_base).strip():
@@ -395,6 +400,8 @@ def _api_key_for_catalog_provider(
         return keys.get("OPENROUTER_API_KEY")
     if prov == "azure":
         return keys.get("AZURE_API_KEY")
+    if prov == "voyage":
+        return keys.get("VOYAGE_API_KEY")
     return (
         keys.get("OPENAI_API_KEY")
         or keys.get("ANTHROPIC_API_KEY")

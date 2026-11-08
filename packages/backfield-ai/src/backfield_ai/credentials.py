@@ -16,6 +16,7 @@ from backfield_ai.constants import (
     INTEGRATION_KEY_AI_PROVIDER_GEMINI,
     INTEGRATION_KEY_AI_PROVIDER_OPENAI,
     INTEGRATION_KEY_AI_PROVIDER_OPENROUTER,
+    INTEGRATION_KEY_AI_PROVIDER_VOYAGE,
     INTEGRATION_KEY_PLATFORM_BRAVE_SEARCH,
     INTEGRATION_KEY_PLATFORM_EXA_SEARCH,
     INTEGRATION_KEY_PLATFORM_GEOCODE_EARTH,
@@ -38,6 +39,7 @@ def organization_llm_api_keys(session: Session, organization_id: int) -> dict[st
         INTEGRATION_KEY_AI_PROVIDER_GEMINI,
         INTEGRATION_KEY_AI_PROVIDER_OPENROUTER,
         INTEGRATION_KEY_AI_PROVIDER_AZURE,
+        INTEGRATION_KEY_AI_PROVIDER_VOYAGE,
     )
     out: dict[str, str] = {}
     org_rows = session.exec(
@@ -61,6 +63,8 @@ def organization_llm_api_keys(session: Session, organization_id: int) -> dict[st
             out["OPENROUTER_API_KEY"] = plain
         elif row.integration_key == INTEGRATION_KEY_AI_PROVIDER_AZURE:
             out["AZURE_API_KEY"] = plain
+        elif row.integration_key == INTEGRATION_KEY_AI_PROVIDER_VOYAGE:
+            out["VOYAGE_API_KEY"] = plain
     return out
 
 
@@ -122,6 +126,7 @@ def merge_project_and_org_llm_api_keys(session: Session, project_id: int) -> dic
         INTEGRATION_KEY_AI_PROVIDER_GEMINI,
         INTEGRATION_KEY_AI_PROVIDER_OPENROUTER,
         INTEGRATION_KEY_AI_PROVIDER_AZURE,
+        INTEGRATION_KEY_AI_PROVIDER_VOYAGE,
     )
     org_rows = session.exec(
         select(BackfieldOrganizationIntegrationSecret).where(
@@ -144,6 +149,8 @@ def merge_project_and_org_llm_api_keys(session: Session, project_id: int) -> dic
             out["OPENROUTER_API_KEY"] = plain
         elif row.integration_key == INTEGRATION_KEY_AI_PROVIDER_AZURE:
             out["AZURE_API_KEY"] = plain
+        elif row.integration_key == INTEGRATION_KEY_AI_PROVIDER_VOYAGE:
+            out["VOYAGE_API_KEY"] = plain
 
     for env_key, val in organization_platform_env_keys(session, org_id).items():
         out[env_key] = val
