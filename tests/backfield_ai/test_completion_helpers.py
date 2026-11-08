@@ -45,6 +45,14 @@ def test_litellm_json_mode_flag(model: str, expected: bool) -> None:
         ("gpt-4o-mini", 0.2, 0.2),
         ("anthropic/claude-sonnet-4-5-20250929", 0.2, 0.2),
         ("gpt-5-nano", None, None),
+        ("anthropic/claude-sonnet-5-5", 0.0, None),
+        ("bedrock/us.anthropic.claude-haiku-5-5", 0.2, None),
+        ("anthropic/claude-fable-5-1", 0.0, None),
+        (
+            "bedrock/arn:aws:bedrock:us-west-2:123456789012:application-inference-profile/abc123",
+            0.0,
+            None,
+        ),
     ],
 )
 def test_litellm_completion_temperature(model: str, temperature: float | None, expected) -> None:
