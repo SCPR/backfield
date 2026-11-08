@@ -10,7 +10,7 @@ from agate_nodes.geocode_agent.nodes.emit_location_line import (
     clamp_admin_location_display_line,
     refine_location_display_line,
     restore_preferred_place_head_casing,
-    should_skip_location_display_polish,
+    structured_admin_location_line,
 )
 
 
@@ -206,11 +206,18 @@ def test_story_context_snippets_truncates_geocode_hints() -> None:
     assert hints == "y" * _HINTS_SNIPPET_MAX + "…"
 
 
-def test_should_skip_polish_for_city_and_address() -> None:
-    assert should_skip_location_display_polish("city") is True
-    assert should_skip_location_display_polish("county") is True
-    assert should_skip_location_display_polish("address") is False
-    assert should_skip_location_display_polish("place") is False
+def test_structured_admin_line_only_for_us_admin_rows() -> None:
+    ca = {"name": "California", "abbr": "CA"}
+    assert structured_admin_location_line("city", {"city": "Glendale", "state": ca}) == (
+        "Glendale, CA"
+    )
+    assert structured_admin_location_line("town", {"city": "Ojai", "state": ca}) == "Ojai, CA"
+    assert structured_admin_location_line("state", {"state": ca}) == "California"
+    # No state code (foreign city) or not an admin row: leave it to the model.
+    assert structured_admin_location_line("city", {"city": "Paris"}) is None
+    assert structured_admin_location_line("county", {"county": "Orange County"}) is None
+    assert structured_admin_location_line("place", {"city": "Glendale", "state": ca}) is None
+    assert structured_admin_location_line("address", {"city": "Glendale", "state": ca}) is None
 
 
 def test_clamp_city_strips_neighborhood_from_polish_mistake() -> None:

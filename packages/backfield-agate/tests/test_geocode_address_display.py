@@ -29,27 +29,23 @@ def _address_state() -> dict:
 
 
 @pytest.mark.parametrize(
-    "emitted,polished",
+    "emitted",
     [
-        ("Springfield, IL", "Springfield, IL"),
-        ("Civic Center, Springfield, IL", "Downtown, Springfield, IL"),
-        ("126 North Main Street, Springfield, IL", "126 N Main St, Springfield, IL"),
-        ("125 Oak Street, Springfield, IL", "125 Oak St, Springfield, IL"),
+        "Springfield, IL",
+        "Civic Center, Springfield, IL",
+        "126 North Main Street, Springfield, IL",
+        "125 Oak Street, Springfield, IL",
     ],
 )
 def test_address_display_falls_back_when_llm_substitutes_broader_place(
     emitted: str,
-    polished: str,
 ) -> None:
     state = _address_state()
 
     async def run() -> str:
         with patch(
             "agate_nodes.geocode_agent.nodes.emit_location_line.call_llm",
-            side_effect=[
-                f'{{"location": "{emitted}"}}',
-                f'{{"location": "{polished}"}}',
-            ],
+            side_effect=[f'{{"location": "{emitted}"}}'],
         ):
             return await compute_emit_location_line(
                 state,
@@ -65,10 +61,28 @@ def test_address_display_accepts_normalized_street_spelling_with_exact_number() 
     async def run() -> str:
         with patch(
             "agate_nodes.geocode_agent.nodes.emit_location_line.call_llm",
-            side_effect=[
-                '{"location": "125 N Main St, Springfield, IL"}',
-                '{"location": "125 North Main Street, Springfield, IL"}',
-            ],
+            side_effect=['{"location": "125 N Main St, Springfield, IL"}'],
+        ):
+            return await compute_emit_location_line(
+                state,
+                formatted_address="125 N Main St, Springfield, IL 62701",
+            )
+
+    assert asyncio.run(run()) == "125 N Main St, Springfield, IL"
+
+
+def test_address_display_makes_one_label_call() -> None:
+    state = _address_state()
+    calls: list[str] = []
+
+    def fake_llm(**kwargs: object) -> str:
+        calls.append(str(kwargs["prompt"]))
+        return '{"location": "125 North Main Street, Springfield, IL"}'
+
+    async def run() -> str:
+        with patch(
+            "agate_nodes.geocode_agent.nodes.emit_location_line.call_llm",
+            side_effect=fake_llm,
         ):
             return await compute_emit_location_line(
                 state,
@@ -76,6 +90,76 @@ def test_address_display_accepts_normalized_street_spelling_with_exact_number() 
             )
 
     assert asyncio.run(run()) == "125 North Main Street, Springfield, IL"
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize(
+    "location_type,location_text,components,expected",
+    [
+        (
+            "city",
+            "Pasadena",
+            {"city": "Pasadena", "state": {"name": "California", "abbr": "CA"}},
+            "Pasadena, CA",
+        ),
+        (
+            "county",
+            "Los Angeles County",
+            {"county": "Los Angeles County", "state": {"name": "California", "abbr": "CA"}},
+            "Los Angeles County, CA",
+        ),
+        ("state", "California", {"state": {"name": "California", "abbr": "CA"}}, "California"),
+    ],
+)
+def test_admin_display_uses_components_without_llm(
+    location_type: str,
+    location_text: str,
+    components: dict,
+    expected: str,
+) -> None:
+    state = {
+        "location_type": location_type,
+        "location_text": location_text,
+        "location_components": components,
+        "original_text": "Story text that mentions Echo Park.",
+        "openai_api_key": "test-key",
+        "evaluation_llm_model": "test-model",
+    }
+
+    async def run() -> str:
+        with patch(
+            "agate_nodes.geocode_agent.nodes.emit_location_line.call_llm",
+            side_effect=AssertionError("no model call expected"),
+        ):
+            return await compute_emit_location_line(state, formatted_address="")
+
+    assert asyncio.run(run()) == expected
+
+
+def test_foreign_city_without_state_code_still_asks_the_model() -> None:
+    state = {
+        "location_type": "city",
+        "location_text": "Paris",
+        "location_components": {"city": "Paris", "country": {"name": "France", "abbr": "FR"}},
+        "original_text": "She moved to Paris.",
+        "openai_api_key": "test-key",
+        "evaluation_llm_model": "test-model",
+    }
+    calls: list[str] = []
+
+    def fake_llm(**kwargs: object) -> str:
+        calls.append(str(kwargs["prompt"]))
+        return '{"location": "Paris, France"}'
+
+    async def run() -> str:
+        with patch(
+            "agate_nodes.geocode_agent.nodes.emit_location_line.call_llm",
+            side_effect=fake_llm,
+        ):
+            return await compute_emit_location_line(state, formatted_address="Paris, France")
+
+    asyncio.run(run())
+    assert len(calls) == 1
 
 
 def test_consolidation_retains_address_extraction_type_after_named_display_upgrade() -> None:
