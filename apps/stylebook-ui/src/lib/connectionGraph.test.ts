@@ -127,19 +127,19 @@ describe("connectionGraph", () => {
   it("lays out neighbors on a ring around the center", () => {
     const four = layoutNeighborRing(["a", "b", "c", "d"], 0, 0)
     // Clockwise from the top, on an ellipse stretched horizontally for wide nodes.
-    expect(four.get("a")).toEqual({ x: 0, y: -204 })
-    expect(four.get("b")).toEqual({ x: 324, y: 0 })
-    expect(four.get("c")).toEqual({ x: 0, y: 204 })
-    expect(four.get("d")).toEqual({ x: -324, y: 0 })
+    expect(four.get("a")).toEqual({ x: 0, y: -180 })
+    expect(four.get("b")).toEqual({ x: 384, y: 0 })
+    expect(four.get("c")).toEqual({ x: 0, y: 180 })
+    expect(four.get("d")).toEqual({ x: -384, y: 0 })
 
     // A pair sits either side of the subject.
     const two = layoutNeighborRing(["a", "b"], 0, 0)
-    expect(two.get("a")).toEqual({ x: 324, y: 0 })
-    expect(two.get("b")).toEqual({ x: -324, y: 0 })
+    expect(two.get("a")).toEqual({ x: 384, y: 0 })
+    expect(two.get("b")).toEqual({ x: -384, y: 0 })
 
     // The ring grows with the neighbor count so adjacent nodes don't overlap.
     expect(ringRadius(4)).toBe(240)
-    expect(ringRadius(32)).toBeGreaterThan(1000)
+    expect(ringRadius(32)).toBeGreaterThan(800)
   })
 
   it("attaches edges on the sides that face each other", () => {

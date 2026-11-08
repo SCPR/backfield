@@ -12,6 +12,7 @@ import ReactFlow, {
   Node,
   NodeProps,
   Position,
+  ReactFlowInstance,
   useEdgesState,
   useNodesState,
 } from "reactflow"
@@ -413,6 +414,22 @@ export default function ConnectionsGraph({
     setEdges(initialEdges)
   }, [initialNodes, initialEdges, setNodes, setEdges])
 
+  // `fitView` on the component only fits the first render; the neighborhood often arrives
+  // (or grows) after that, leaving the ring tiny and off-center. Re-fit when the set of
+  // nodes changes, but not on selection changes, which would undo the reader's zoom.
+  const [flow, setFlow] = useState<ReactFlowInstance | null>(null)
+  const nodeSetKey = useMemo(
+    () => initialNodes.map((node) => node.id).sort().join("|"),
+    [initialNodes],
+  )
+  useEffect(() => {
+    if (!flow) return
+    const frame = requestAnimationFrame(() => {
+      flow.fitView({ padding: 0.08, maxZoom: 1 })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [flow, nodeSetKey])
+
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node<ConnectionGraphNodeData>) => {
     const parsed = parseNodeId(node.id)
     if (!parsed) return
@@ -450,8 +467,9 @@ export default function ConnectionsGraph({
           onNodeClick={onNodeClick}
           onEdgeClick={onEdgeClick}
           onPaneClick={onPaneClick}
+          onInit={setFlow}
           fitView
-          fitViewOptions={{ padding: 0.14, maxZoom: 1 }}
+          fitViewOptions={{ padding: 0.08, maxZoom: 1 }}
           minZoom={0.12}
           maxZoom={1.2}
           nodesDraggable={false}

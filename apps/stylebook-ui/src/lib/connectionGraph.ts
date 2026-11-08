@@ -207,10 +207,13 @@ export const GRAPH_NODE_LAYOUT_HEIGHT = 56
 /** Smallest ring radius: leaves room for an edge label between the subject and a neighbor. */
 const GRAPH_RING_MIN_RADIUS = 240
 /** Arc length reserved per neighbor so adjacent nodes and labels don't collide. */
-const GRAPH_RING_ARC_PER_NEIGHBOR = 230
-/** Nodes are wide and short, so the ring is an ellipse stretched horizontally. */
-const GRAPH_RING_X_STRETCH = 1.35
-const GRAPH_RING_Y_STRETCH = 0.85
+const GRAPH_RING_ARC_PER_NEIGHBOR = 160
+/**
+ * Nodes are wide and short and the canvas is wider than tall, so the ring is an ellipse
+ * stretched horizontally; that keeps large neighborhoods legible after fit-to-view.
+ */
+const GRAPH_RING_X_STRETCH = 1.6
+const GRAPH_RING_Y_STRETCH = 0.75
 
 export type GraphPoint = { x: number; y: number }
 
