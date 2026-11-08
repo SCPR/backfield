@@ -706,6 +706,7 @@ def run_org_model_connection_test(
                 api_base=api_base,
                 timeout=60.0,
                 track_attempt=False,
+                model_config_json=row.config_json if isinstance(row.config_json, dict) else None,
             )
             if batch.batch_error or not batch.items or batch.items[0].vector is None:
                 raise RuntimeError(batch.batch_error or "Embedding test returned no vector")

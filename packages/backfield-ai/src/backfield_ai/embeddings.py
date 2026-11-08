@@ -34,6 +34,37 @@ class EmbeddingModelKindError(ValueError):
     """A generative catalog row was passed to the embedding path (or the reverse)."""
 
 
+BEDROCK_BASE_MODEL_CONFIG_KEY = "bedrock_base_model"
+
+
+def bedrock_embedding_route(
+    litellm_model: str,
+    config_json: dict[str, Any] | None,
+) -> tuple[str, dict[str, Any]]:
+    """Return the LiteLLM model and extra kwargs for a Bedrock inference-profile embedding.
+
+    LiteLLM picks its Bedrock embedding handler from the model name, so a bare profile ARN
+    (``bedrock/arn:...:application-inference-profile/x``) fails with "Unable to determine
+    bedrock embedding provider". It needs the base model as the name and the profile ARN as
+    ``model_id``. The base model comes from the catalog row's ``config_json``
+    (``{"bedrock_base_model": "amazon.titan-embed-text-v2:0"}``). Other models pass through.
+    """
+    lm = (litellm_model or "").strip()
+    provider, _, rest = lm.partition("/")
+    if provider.lower() != "bedrock" or "inference-profile/" not in rest:
+        return lm, {}
+    base = ""
+    if isinstance(config_json, dict):
+        base = str(config_json.get(BEDROCK_BASE_MODEL_CONFIG_KEY) or "").strip()
+    if not base:
+        raise EmbeddingConfigurationError(
+            "Bedrock inference-profile embedding models need the underlying model id in the "
+            f'model\'s config_json, e.g. {{"{BEDROCK_BASE_MODEL_CONFIG_KEY}": '
+            '"amazon.titan-embed-text-v2:0"}.'
+        )
+    return f"bedrock/{base}", {"model_id": rest}
+
+
 @dataclass(frozen=True)
 class EmbeddingItemResult:
     index: int
@@ -198,6 +229,7 @@ def embed_texts_sync(
     timeout: float = 120.0,
     model_config_id: str | None = None,
     track_attempt: bool = True,
+    model_config_json: dict[str, Any] | None = None,
 ) -> LiteLLMEmbeddingBatchResult:
     """Embed a batch of strings via LiteLLM (no Backfield-level retries)."""
     if not texts:
@@ -208,13 +240,15 @@ def embed_texts_sync(
         raise EmbeddingConfigurationError("litellm_model is empty.")
 
     provider, provider_model_id = _provider_fields(lm)
+    routed_model, route_kwargs = bedrock_embedding_route(lm, model_config_json)
     t0 = time.perf_counter()
 
     kwargs: dict[str, Any] = {
-        "model": lm,
+        "model": routed_model,
         "input": texts,
         "timeout": timeout,
         "num_retries": 0,
+        **route_kwargs,
     }
     if api_key:
         kwargs["api_key"] = api_key
@@ -282,7 +316,7 @@ def embed_texts_sync(
         pt, tt = _usage_from_embedding_response(resp)
         est_cost, currency, cost_incomplete, cost_source = _embedding_cost_fields(
             resp=resp,
-            litellm_model=lm,
+            litellm_model=routed_model,
             prompt_tokens=pt,
             total_tokens=tt,
         )
@@ -316,7 +350,7 @@ def embed_texts_sync(
     dims = len(vectors[0]) if vectors else None
     est_cost, currency, cost_incomplete, cost_source = _embedding_cost_fields(
         resp=resp,
-        litellm_model=lm,
+        litellm_model=routed_model,
         prompt_tokens=pt,
         total_tokens=tt,
     )
@@ -378,6 +412,7 @@ class EmbeddingModelAuth:
     api_key: str
     api_base: str | None
     model_config_id: str
+    config_json: dict[str, Any] | None = None
 
 
 def resolve_embedding_auth_for_model_config(
@@ -436,6 +471,7 @@ def resolve_embedding_auth_for_model_config(
         api_key=api_key,
         api_base=api_base,
         model_config_id=config_id,
+        config_json=cfg.config_json if isinstance(cfg.config_json, dict) else None,
     )
 
 
@@ -482,4 +518,5 @@ def embed_texts_for_model_config(
         api_base=auth.api_base,
         timeout=timeout,
         model_config_id=auth.model_config_id,
+        model_config_json=auth.config_json,
     )
