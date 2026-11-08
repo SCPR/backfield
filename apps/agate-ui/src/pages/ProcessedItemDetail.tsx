@@ -1073,6 +1073,7 @@ export default function ProcessedItemDetail() {
               <CardContent>
                 <div className="rounded border overflow-auto max-h-[600px] [&_*]:break-words">
                   <JsonView
+                    className="json-view-vscode"
                     value={sanitizeForJsonView(jsonDisplayOutput ?? item.output)}
                     style={{
                       backgroundColor: 'transparent',

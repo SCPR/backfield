@@ -49,6 +49,63 @@
   }
 }
 
+/*
+ * JSON viewer (@uiw/react-json-view) in VS Code colors: Light+ by default, Dark+ under
+ * `.dark` (Dark+ values match the library's own vscodeTheme). Applied with the
+ * `json-view-vscode` class; the library reads these --w-rjv-* variables.
+ */
+.json-view-vscode {
+  --w-rjv-font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --w-rjv-background-color: transparent;
+  --w-rjv-color: #0451a5;
+  --w-rjv-key-string: #0451a5;
+  --w-rjv-line-color: #e5e5e5;
+  --w-rjv-arrow-color: #6e6e6e;
+  --w-rjv-edit-color: var(--w-rjv-color);
+  --w-rjv-info-color: #6e6e6e;
+  --w-rjv-update-color: #0451a5;
+  --w-rjv-copied-color: #0451a5;
+  --w-rjv-copied-success-color: #28a745;
+  --w-rjv-curlybraces-color: #3b3b3b;
+  --w-rjv-colon-color: #3b3b3b;
+  --w-rjv-brackets-color: #3b3b3b;
+  --w-rjv-quotes-color: var(--w-rjv-key-string);
+  --w-rjv-quotes-string-color: var(--w-rjv-type-string-color);
+  --w-rjv-type-string-color: #a31515;
+  --w-rjv-type-int-color: #098658;
+  --w-rjv-type-float-color: #098658;
+  --w-rjv-type-bigint-color: #098658;
+  --w-rjv-type-boolean-color: #0000ff;
+  --w-rjv-type-date-color: #098658;
+  --w-rjv-type-url-color: #0070c1;
+  --w-rjv-type-null-color: #0000ff;
+  --w-rjv-type-nan-color: #098658;
+  --w-rjv-type-undefined-color: #0000ff;
+}
+
+.dark .json-view-vscode {
+  --w-rjv-color: #9cdcfe;
+  --w-rjv-key-string: #9cdcfe;
+  --w-rjv-line-color: #3c3c3c;
+  --w-rjv-arrow-color: #c5c5c5;
+  --w-rjv-info-color: #9c9c9c;
+  --w-rjv-update-color: #9cdcfe;
+  --w-rjv-copied-color: #9cdcfe;
+  --w-rjv-curlybraces-color: #d4d4d4;
+  --w-rjv-colon-color: #d4d4d4;
+  --w-rjv-brackets-color: #d4d4d4;
+  --w-rjv-type-string-color: #ce9178;
+  --w-rjv-type-int-color: #b5cea8;
+  --w-rjv-type-float-color: #b5cea8;
+  --w-rjv-type-bigint-color: #b5cea8;
+  --w-rjv-type-boolean-color: #569cd6;
+  --w-rjv-type-date-color: #b5cea8;
+  --w-rjv-type-url-color: #4fc1ff;
+  --w-rjv-type-null-color: #569cd6;
+  --w-rjv-type-nan-color: #b5cea8;
+  --w-rjv-type-undefined-color: #569cd6;
+}
+
 @layer base {
   * {
     @apply border-border;
