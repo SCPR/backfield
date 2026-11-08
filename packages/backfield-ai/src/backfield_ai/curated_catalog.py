@@ -62,9 +62,10 @@ _ANTHROPIC_VERSION_FIRST_RE = re.compile(
 )
 _GEMINI_RE = re.compile(r"^gemini-(\d+)\.(\d+)-(pro|flash|flash-lite)$")
 _EMBEDDING_RE = re.compile(r"^text-embedding-3-[a-z0-9-]+$")
-# Voyage general-purpose embeddings via /v1/embeddings. Context models use a separate
-# endpoint and domain models (code, law, finance) are out of scope for news.
-_VOYAGE_EMBEDDING_RE = re.compile(r"^voyage-(\d+)(?:-(large|lite))?$")
+# Voyage general-purpose embeddings (voyage-4, -large, -lite) via /v1/embeddings, and
+# context models (voyage-context-4) via /v1/contextualizedembeddings for article passage
+# search. Domain models (code, law, finance) are out of scope for news.
+_VOYAGE_EMBEDDING_RE = re.compile(r"^voyage-(?:(context)-)?(\d+)(?:-(large|lite))?$")
 _VOYAGE_MIN_MAJOR = 4
 _MISTRAL_RE = re.compile(r"^mistral-(large|medium|small)-latest$")
 _OPENROUTER_QWEN_VERSION_RE = re.compile(r"qwen(\d+(?:\.\d+)?)")
@@ -321,14 +322,15 @@ def _voyage_template(raw_id: str, mode: str) -> CuratedAiModelTemplate | None:
     if model_id is None or mode not in {"", "embedding"}:
         return None
     match = _VOYAGE_EMBEDDING_RE.fullmatch(model_id)
-    if match is None or int(match.group(1)) < _VOYAGE_MIN_MAJOR:
+    if match is None or int(match.group(2)) < _VOYAGE_MIN_MAJOR:
         return None
-    tier = f" {match.group(2).title()}" if match.group(2) else ""
+    context = " Context" if match.group(1) else ""
+    tier = f" {match.group(3).title()}" if match.group(3) else ""
     return CuratedAiModelTemplate(
         template_id=_curated_id("voyage", model_id),
         provider="voyage",
         provider_model_id=model_id,
-        label=f"Voyage {match.group(1)}{tier}",
+        label=f"Voyage{context} {match.group(2)}{tier}",
         capabilities=(AI_CAPABILITY_EMBEDDING,),
         model_kind=AI_MODEL_KIND_EMBEDDING,
     )

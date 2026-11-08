@@ -15,6 +15,7 @@ from sqlmodel import Session, select
 from backfield_ai.catalog_visibility import is_language_model_kind
 from backfield_ai.constants import (
     AI_DEFAULT_ROLE_GENERATIVE_DEFAULT,
+    AI_DEFAULT_ROLE_SEMANTIC_ARTICLE_EMBEDDING,
     AI_DEFAULT_ROLE_SEMANTIC_EMBEDDING,
     AI_DEFAULT_ROLE_SEMANTIC_HYDE,
     AI_MODEL_KIND_EMBEDDING,
@@ -285,6 +286,48 @@ def semantic_embedding_configured(session: Session, project_id: int) -> bool:
         return True
     except EmbeddingConfigurationError:
         return False
+
+
+def resolve_article_passage_embedding_model_config_id(
+    session: Session,
+    project_id: int,
+) -> str | None:
+    """Embedding model for article passage search, or None when the role isn't set.
+
+    Unlike mention indexing there is no "sole enabled model" fallback: passage search is
+    opt-in, so projects without the role keep whole-article search.
+    """
+    proj = session.get(BackfieldProject, project_id)
+    if proj is None:
+        return None
+    org_id = int(proj.organization_id)
+    for scope in (
+        (
+            BackfieldAiDefaultModelRole.project_id == project_id,
+            BackfieldAiDefaultModelRole.organization_id.is_(None),
+        ),
+        (
+            BackfieldAiDefaultModelRole.organization_id == org_id,
+            BackfieldAiDefaultModelRole.project_id.is_(None),
+        ),
+    ):
+        row = session.exec(
+            select(BackfieldAiDefaultModelRole).where(
+                *scope,
+                BackfieldAiDefaultModelRole.role == AI_DEFAULT_ROLE_SEMANTIC_ARTICLE_EMBEDDING,
+            )
+        ).first()
+        if row is None:
+            continue
+        loaded = _try_load_semantic_embedding_config(
+            session,
+            organization_id=org_id,
+            project_id=project_id,
+            config_id=str(row.model_config_id),
+        )
+        if loaded is not None:
+            return loaded
+    return None
 
 
 def _enabled_generative_config_ids(session: Session, project_id: int) -> list[str]:

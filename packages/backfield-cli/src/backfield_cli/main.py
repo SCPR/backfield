@@ -7,6 +7,7 @@ import sys
 
 from backfield_cli import backfill_connections as backfill_connections_cmd
 from backfield_cli import doctor as doctor_cmd
+from backfield_cli import index_article_passages as index_article_passages_cmd
 from backfield_cli import init as init_cmd
 from backfield_cli import migrate as migrate_cmd
 from backfield_cli import migrate_connection_kg as migrate_connection_kg_cmd
@@ -33,6 +34,7 @@ def main(argv: list[str] | None = None) -> int:
     migrate_connection_kg_cmd.register_subcommand(subparsers)
     organization_cmd.register_subcommand(subparsers)
     set_embedding_dimensions_cmd.register_subcommand(subparsers)
+    index_article_passages_cmd.register_subcommand(subparsers)
     stack_cmd.register_subcommands(subparsers)
     args = parser.parse_args(argv)
     handler = getattr(args, "handler", None)

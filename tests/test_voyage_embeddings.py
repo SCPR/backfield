@@ -29,14 +29,15 @@ COST_MAP = {
 }
 
 
-def test_presets_list_current_general_voyage_models_only() -> None:
+def test_presets_list_current_general_and_context_voyage_models_only() -> None:
     voyage = {
         t.provider_model_id: t
         for t in list_curated_templates(COST_MAP).values()
         if t.provider == "voyage"
     }
-    assert set(voyage) == {"voyage-4", "voyage-4-large", "voyage-4-lite"}
+    assert set(voyage) == {"voyage-4", "voyage-4-large", "voyage-4-lite", "voyage-context-4"}
     assert voyage["voyage-4-large"].label == "Voyage 4 Large"
+    assert voyage["voyage-context-4"].label == "Voyage Context 4"
     assert all(t.model_kind == AI_MODEL_KIND_EMBEDDING for t in voyage.values())
 
 

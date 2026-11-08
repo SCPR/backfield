@@ -7,10 +7,10 @@ from datetime import UTC, datetime
 from backfield_ai.catalog_visibility import matches_capability_request
 from backfield_ai.constants import (
     AI_DEFAULT_ROLE_GENERATIVE_DEFAULT,
-    AI_DEFAULT_ROLE_SEMANTIC_EMBEDDING,
     AI_MODEL_KIND_DECISION,
     AI_MODEL_KIND_EMBEDDING,
     AI_MODEL_KIND_GENERATIVE,
+    EMBEDDING_DEFAULT_ROLES,
     PROJECT_AI_DEFAULT_ROLES,
     is_project_model_override_integration_key,
     project_model_override_integration_key,
@@ -341,10 +341,7 @@ def put_project_default_role(
     if rkey not in PROJECT_AI_DEFAULT_ROLES:
         raise HTTPException(status_code=400, detail="Unsupported default role")
     cfg = get_org_model_config(session, organization_id=org_id, config_id=model_config_id)
-    if (
-        rkey == AI_DEFAULT_ROLE_SEMANTIC_EMBEDDING
-        and str(cfg.model_kind) != AI_MODEL_KIND_EMBEDDING
-    ):
+    if rkey in EMBEDDING_DEFAULT_ROLES and str(cfg.model_kind) != AI_MODEL_KIND_EMBEDDING:
         raise HTTPException(
             status_code=400,
             detail="The semantic search default must be an embedding model.",

@@ -1,4 +1,4 @@
-from backfield_db.article_embedding_models import SubstrateArticleEmbedding
+from backfield_db.article_embedding_models import SubstrateArticleEmbedding, SubstrateArticlePassage
 from backfield_db.article_meta_models import SubstrateArticleMeta
 from backfield_db.custom_record_models import SubstrateCustomRecord
 from backfield_db.image_embedding_models import SubstrateImageEmbedding
@@ -132,6 +132,7 @@ __all__ = [
     "StylebookSlugRedirect",
     "SubstrateArticle",
     "SubstrateArticleEmbedding",
+    "SubstrateArticlePassage",
     "SubstrateArticleMeta",
     "SubstrateCustomRecord",
     "SubstrateImage",

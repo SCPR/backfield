@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from backfield_ai.embeddings import EmbeddingConfigurationError
+from backfield_ai.model_resolve import resolve_article_passage_embedding_model_config_id
 from backfield_ai.query_embedding import SemanticQueryEmbedding, embed_semantic_search_query
 from backfield_db import BackfieldProject
 from backfield_entities.public.article_semantic_search import (
     PublicArticleSemanticSearchItemOut,
     PublicArticleSemanticSearchParams,
+    search_public_articles_by_passages,
     search_public_articles_semantic,
 )
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -48,6 +52,14 @@ class PublicArticleSemanticSearchIn(BaseModel):
 
 class PublicArticleSemanticSearchOut(BaseModel):
     query: str
+    search_mode: Literal["passages", "articles"] = Field(
+        default="articles",
+        description=(
+            "passages: articles ranked by their best-matching passage, with the matching "
+            "passages on each item (when the project sets an article search model); "
+            "articles: one embedding per article"
+        ),
+    )
     embedding_model: str | None = None
     embedding_model_config_id: str | None = None
     hyde_used: bool = False
@@ -78,12 +90,17 @@ def search_project_articles_semantic(
     """Search project articles by semantic similarity when embeddings exist."""
     query = body.query.strip()
     includes = parse_article_includes(body.include)
+    project_id = int(project.id)  # type: ignore[arg-type]
+    passage_model_config_id = resolve_article_passage_embedding_model_config_id(
+        session, project_id
+    )
     try:
         embedding: SemanticQueryEmbedding = embed_semantic_search_query(
             session,
-            project_id=int(project.id),  # type: ignore[arg-type]
+            project_id=project_id,
             query=query,
             use_hyde=body.use_hyde,
+            model_config_id=passage_model_config_id,
         )
     except EmbeddingConfigurationError as exc:
         raise _embedding_http_error(exc) from exc
@@ -95,17 +112,27 @@ def search_project_articles_semantic(
         limit=body.limit,
         offset=body.offset,
     )
-    items, total = search_public_articles_semantic(
-        session,
-        project_id=int(project.id),  # type: ignore[arg-type]
-        query_vector=embedding.vector,
-        embedding_model_config_id=embedding.model_config_id,
-        embedding_provider_model_id=_provider_model_id(embedding.embedding_model),
-        params=params,
-    )
+    if passage_model_config_id is not None:
+        items, total = search_public_articles_by_passages(
+            session,
+            project_id=project_id,
+            query_vector=embedding.vector,
+            embedding_model_config_id=passage_model_config_id,
+            params=params,
+        )
+    else:
+        items, total = search_public_articles_semantic(
+            session,
+            project_id=project_id,
+            query_vector=embedding.vector,
+            embedding_model_config_id=embedding.model_config_id,
+            embedding_provider_model_id=_provider_model_id(embedding.embedding_model),
+            params=params,
+        )
     apply_public_article_list_includes(session, items, includes)
     return PublicArticleSemanticSearchOut(
         query=query,
+        search_mode="passages" if passage_model_config_id is not None else "articles",
         embedding_model=embedding.embedding_model,
         embedding_model_config_id=embedding.model_config_id,
         hyde_used=embedding.hyde_used,

@@ -162,4 +162,5 @@ def test_embed_texts_for_model_config_does_not_hold_session_during_sync(
         timeout=120.0,
         model_config_id="cfg-embed",
         model_config_json=None,
+        input_type=None,
     )
