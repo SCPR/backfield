@@ -70,6 +70,7 @@ async def run_geocoding_agent(
     geocodio_api_key: Optional[str] = None,
     openai_api_key: Optional[str] = None,
     brave_search_api_key: Optional[str] = None,
+    exa_api_key: Optional[str] = None,
     use_cache: bool = False,
     stylebook_api_url: Optional[str] = None,
     project_slug: Optional[str] = None,
@@ -103,6 +104,7 @@ async def run_geocoding_agent(
         geocodio_api_key: Geocodio API key for fallback geocoding
         openai_api_key: OpenAI API key for LLM evaluation
         brave_search_api_key: Brave Search API key for place address finding
+        exa_api_key: Exa API key for place address finding (tried after Brave)
         evaluation_llm_model: Optional OpenAI model id for area geocoder evaluation.
         router_llm_model: Used only by ``run_advanced_geocoding_agent`` (route_strategy).
 
@@ -127,6 +129,7 @@ async def run_geocoding_agent(
         "geocodio_api_key": geocodio_api_key,
         "openai_api_key": openai_api_key,
         "brave_search_api_key": brave_search_api_key,
+        "exa_api_key": exa_api_key,
         "use_cache": use_cache,
         "stylebook_api_url": stylebook_api_url,
         "project_slug": project_slug,
@@ -163,6 +166,7 @@ async def run_advanced_geocoding_agent(
     geocodio_api_key: Optional[str] = None,
     openai_api_key: Optional[str] = None,
     brave_search_api_key: Optional[str] = None,
+    exa_api_key: Optional[str] = None,
     use_cache: bool = False,
     stylebook_api_url: Optional[str] = None,
     project_slug: Optional[str] = None,
@@ -197,6 +201,7 @@ async def run_advanced_geocoding_agent(
         "geocodio_api_key": geocodio_api_key,
         "openai_api_key": openai_api_key,
         "brave_search_api_key": brave_search_api_key,
+        "exa_api_key": exa_api_key,
         "use_cache": use_cache,
         "stylebook_api_url": stylebook_api_url,
         "project_slug": project_slug,

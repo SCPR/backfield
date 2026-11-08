@@ -335,6 +335,7 @@ async def _run_geocode_agent_pipeline_tracked(
     geocodio_api_key = ctx.get_api_key("GEOCODIO_API_KEY")
     openai_api_key = ctx.get_api_key("OPENAI_API_KEY")
     brave_search_api_key = ctx.get_api_key("BRAVE_SEARCH_API_KEY")
+    exa_api_key = ctx.get_api_key("EXA_API_KEY")
     service_api_token = ctx.get_api_key("SERVICE_API_TOKEN")
 
     eval_lm_model = params.evaluationModel
@@ -472,6 +473,7 @@ async def _run_geocode_agent_pipeline_tracked(
                     extra_fields=extra_fields,
                     pelias_api_key=pelias_api_key,
                     brave_search_api_key=brave_search_api_key,
+                    exa_api_key=exa_api_key,
                     geocodio_api_key=geocodio_api_key,
                     openai_api_key=openai_api_key,
                     use_cache=params.useCache,
