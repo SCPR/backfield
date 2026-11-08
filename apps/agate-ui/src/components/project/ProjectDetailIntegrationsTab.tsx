@@ -22,6 +22,7 @@ const OVERRIDE_TO_ORG_PLATFORM_KEY: Record<(typeof PROJECT_OVERRIDE_ENV_KEYS)[nu
   PELIAS_API_KEY: PLATFORM_INTEGRATION_KEYS.geocodeEarth,
   GEOCODIO_API_KEY: PLATFORM_INTEGRATION_KEYS.geocodio,
   BRAVE_SEARCH_API_KEY: PLATFORM_INTEGRATION_KEYS.braveSearch,
+  EXA_API_KEY: PLATFORM_INTEGRATION_KEYS.exaSearch,
   AWS_ACCESS_KEY_ID: PLATFORM_INTEGRATION_KEYS.s3AccessKeyId,
   AWS_SECRET_ACCESS_KEY: PLATFORM_INTEGRATION_KEYS.s3SecretAccessKey,
   AWS_SESSION_TOKEN: PLATFORM_INTEGRATION_KEYS.s3SessionToken,
@@ -39,6 +40,10 @@ const OVERRIDE_LABELS: Record<string, { title: string; hint: string }> = {
   },
   BRAVE_SEARCH_API_KEY: {
     title: 'Brave Search',
+    hint: 'Overrides the organization default for this project only.',
+  },
+  EXA_API_KEY: {
+    title: 'Exa',
     hint: 'Overrides the organization default for this project only.',
   },
   AWS_ACCESS_KEY_ID: {

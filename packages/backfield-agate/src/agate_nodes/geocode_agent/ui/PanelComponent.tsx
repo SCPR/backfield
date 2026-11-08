@@ -32,6 +32,19 @@ const DEFAULTS = {
   routerAiModelConfigId: null as string | null,
   useCacheLlmAdjudication: true,
   useCacheLlmAdjudicationOnMissRecall: false,
+  webSearchProvider: 'auto' as WebSearchProvider,
+}
+
+type WebSearchProvider = 'auto' | 'brave' | 'exa'
+
+const WEB_SEARCH_PROVIDER_HINTS: Record<WebSearchProvider, string> = {
+  auto: 'Tries Brave Search, then Exa, using whichever keys your organization saved.',
+  brave: 'Uses only Brave Search, even if an Exa key is saved.',
+  exa: 'Uses only Exa, even if a Brave Search key is saved.',
+}
+
+function webSearchProviderValue(raw: unknown): WebSearchProvider {
+  return raw === 'brave' || raw === 'exa' ? raw : 'auto'
 }
 
 const EVALUATION_MODEL_KEYS = {
@@ -283,6 +296,22 @@ export default function GeocodeAgentPanel({
     }
   }
 
+  const handleWebSearchProviderChange = (value: string) => {
+    if (!setNodes) return
+    setNodes((nodes: any[]) =>
+      nodes.map((n) =>
+        n.id === node.id
+          ? {
+              ...n,
+              data: mergeData({ ...(n.data || {}), webSearchProvider: webSearchProviderValue(value) }),
+            }
+          : n,
+      ),
+    )
+  }
+
+  const webSearchProvider = webSearchProviderValue(params.webSearchProvider)
+
   const handleEvaluationModel = (selectValue: string) => {
     if (!setNodes || selectValue === INVALID_SELECTION_VALUE) return
     const row = modelSelectOptions.find((o) => o.selectValue === selectValue)
@@ -409,6 +438,30 @@ export default function GeocodeAgentPanel({
             </Select>
             <p className="text-xs text-muted-foreground">
               First attempt to use Stylebook and internal cache to retrieve coordinates.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="geocode-webSearchProvider" className="text-sm font-medium">
+              Web search
+            </Label>
+            <Select
+              value={webSearchProvider}
+              onValueChange={handleWebSearchProviderChange}
+              disabled={isDisabled}
+            >
+              <SelectTrigger id="geocode-webSearchProvider" className="text-xs">
+                <SelectValue placeholder="Choose a web search provider" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Auto</SelectItem>
+                <SelectItem value="brave">Brave Search</SelectItem>
+                <SelectItem value="exa">Exa</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Finds street addresses for named places. {WEB_SEARCH_PROVIDER_HINTS[webSearchProvider]}{' '}
+              DuckDuckGo is the free fallback.
             </p>
           </div>
 
