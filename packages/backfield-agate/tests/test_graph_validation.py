@@ -130,7 +130,45 @@ def test_validate_graph_invariants_rejects_geocode_without_place_extract() -> No
             Edge(source="geo", target="out"),
         ],
     )
-    with pytest.raises(GraphInvariantError, match="Geocode Agent must follow Place Extract"):
+    with pytest.raises(GraphInvariantError, match="Geocode Agent needs places"):
+        validate_graph_invariants(spec)
+
+
+@pytest.mark.parametrize("input_type", ["S3Input", "JSONInput"])
+def test_validate_graph_invariants_allows_geocode_fed_saved_locations_by_input(
+    input_type: str,
+) -> None:
+    """Re-geocoding saved places: an input wired into the locations handle satisfies the rule."""
+    spec = _spec(
+        [
+            NodeConfig(id="in", type=input_type),
+            NodeConfig(id="geo", type="GeocodeAgent"),
+            NodeConfig(id="out", type="DBOutput"),
+        ],
+        [
+            Edge(source="in", target="geo", sourceHandle="locations", targetHandle="locations"),
+            Edge(source="geo", target="out", sourceHandle="places", targetHandle="data"),
+        ],
+    )
+    validate_graph_invariants(spec)
+
+
+def test_validate_graph_invariants_rejects_non_input_feeding_geocode_locations() -> None:
+    """Only input steps (documents carrying saved places) satisfy the handle path."""
+    spec = _spec(
+        [
+            NodeConfig(id="in", type="TextInput"),
+            NodeConfig(id="org", type="OrganizationExtract"),
+            NodeConfig(id="geo", type="GeocodeAgent"),
+            NodeConfig(id="out", type="DBOutput"),
+        ],
+        [
+            Edge(source="in", target="org"),
+            Edge(source="org", target="geo", targetHandle="locations"),
+            Edge(source="geo", target="out"),
+        ],
+    )
+    with pytest.raises(GraphInvariantError, match="Geocode Agent needs places"):
         validate_graph_invariants(spec)
 
 
@@ -150,7 +188,7 @@ def test_validate_graph_invariants_rejects_geocode_on_sibling_branch_without_pla
             Edge(source="geo", target="out"),
         ],
     )
-    with pytest.raises(GraphInvariantError, match="Geocode Agent must follow Place Extract"):
+    with pytest.raises(GraphInvariantError, match="Geocode Agent needs places"):
         validate_graph_invariants(spec)
 
 

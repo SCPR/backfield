@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from dataclasses import dataclass
 from decimal import Decimal
@@ -21,6 +22,9 @@ _MAX_OUTPUT_RETRY_CEILING = 1_048_576
 # GPT-5.6 omits a usable provider default for visible JSON; LiteLLM remaps this to
 # ``max_completion_tokens`` (visible + reasoning tokens).
 _GPT56_DEFAULT_MAX_COMPLETION_TOKENS = 8192
+# Claude 5 on Bedrock: an omitted cap leaves a provider default too small for
+# extraction JSON (place lists were cut off mid-string around 5k characters).
+_CLAUDE5_DEFAULT_MAX_TOKENS = 16384
 
 
 @dataclass(frozen=True)
@@ -192,6 +196,23 @@ def _gpt_major_version(model_id: str) -> int | None:
     return int(digits)
 
 
+_CLAUDE_MAJOR_RE = re.compile(r"claude-(?:opus|sonnet|haiku|fable)-(\d+)")
+
+
+def _rejects_temperature(model_id: str) -> bool:
+    """True for models that reject ``temperature`` outright.
+
+    Claude 5 and later models return "`temperature` is deprecated for this
+    model". A Bedrock application inference profile ARN hides which model it
+    points at, so it is treated the same way: such profiles are how Claude is
+    reached on Bedrock with cost-allocation tags.
+    """
+    if ":application-inference-profile/" in model_id:
+        return True
+    match = _CLAUDE_MAJOR_RE.search(model_id)
+    return match is not None and int(match.group(1)) >= 5
+
+
 def _litellm_completion_temperature(
     litellm_model: str,
     temperature: float | None,
@@ -206,11 +227,14 @@ def _litellm_completion_temperature(
     GPT-6 and later reject any temperature other than ``1`` while reasoning is
     on. An unset effort leaves the provider default, which is reasoning on.
     ``reasoning_effort="none"`` may still send the caller's temperature.
+
+    Claude 5 and later, and Bedrock application inference profiles, never get
+    a temperature (see ``_rejects_temperature``).
     """
     if temperature is None:
         return None
     model_id = _provider_model_id_from_litellm(litellm_model)
-    if model_id.startswith("gpt-5"):
+    if model_id.startswith("gpt-5") or _rejects_temperature(model_id):
         return None
     major = _gpt_major_version(model_id)
     if major is not None and major >= 6 and reasoning_effort != "none" and temperature != 1:
@@ -236,11 +260,13 @@ def _assistant_json_is_parseable(text: str) -> bool:
 
 
 def _effective_max_tokens(litellm_model: str, max_tokens: int | None) -> int | None:
-    """Caller cap, or a GPT-5.6 default so JSON extract is not left uncapped."""
+    """Caller cap, or a GPT-5.6 / Claude 5 default so JSON extract is not left uncapped."""
     if max_tokens is not None:
         return max_tokens
     if _is_gpt56_family(litellm_model):
         return _GPT56_DEFAULT_MAX_COMPLETION_TOKENS
+    if _rejects_temperature(_provider_model_id_from_litellm(litellm_model)):
+        return _CLAUDE5_DEFAULT_MAX_TOKENS
     return None
 
 

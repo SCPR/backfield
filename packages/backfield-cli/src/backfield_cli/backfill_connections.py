@@ -80,6 +80,22 @@ def _call_llm(prompt: str, **kwargs: Any) -> str:
     )
 
 
+def backfill_settings(args: argparse.Namespace) -> DbOutputCanonicalSettings:
+    """Settings for historical inference.
+
+    Auto connections default to off in Backfield Output settings; the backfill exists to run
+    them, so it turns them on explicitly (otherwise every article reports ``disabled``). The
+    chosen model is used for connection inference as well as adjudication.
+    """
+    return DbOutputCanonicalSettings(
+        auto_connections_enabled=True,
+        adjudication_model=str(args.model),
+        adjudication_ai_model_config_id=args.model_config_id,
+        connections_model=str(args.model),
+        connections_ai_model_config_id=args.model_config_id,
+    )
+
+
 def _project_ids_for_scope(session: Session, args: argparse.Namespace) -> list[int]:
     if args.project_id is not None:
         project = session.get(BackfieldProject, int(args.project_id))
@@ -159,10 +175,7 @@ def run(args: argparse.Namespace) -> int:
             "articles": [],
             "resume_cursor": args.after_article_id,
         }
-        settings = DbOutputCanonicalSettings(
-            adjudication_model=str(args.model),
-            adjudication_ai_model_config_id=args.model_config_id,
-        )
+        settings = backfill_settings(args)
         for article in articles:
             article_id = int(article.id)  # type: ignore[arg-type]
             project_id = int(article.project_id)

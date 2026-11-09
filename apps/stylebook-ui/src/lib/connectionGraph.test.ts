@@ -5,14 +5,15 @@ import {
   classifyConnectionHop,
   connectionsTouchingEntity,
   dedupeConnections,
-  egoGraphLayoutMetrics,
+  facingSides,
   formatNatureLabel,
-  gridColumns,
   groupConnectionsByDirectedEdge,
-  layoutNeighborGrid,
+  layoutNeighborRing,
   neighborFromConnection,
   otherEndFromConnection,
+  ringRadius,
   selectConnectionsForGraphDisplay,
+  sortNeighborsForRing,
   type GraphEntityRef,
 } from "@/lib/connectionGraph"
 import type { Connection } from "@/lib/stylebook-api/connections"
@@ -123,22 +124,44 @@ describe("connectionGraph", () => {
     ).toBe(0)
   })
 
-  it("lays out neighbors in a compact grid above the center", () => {
-    expect(gridColumns(1)).toBe(1)
-    expect(gridColumns(5)).toBe(3)
-    expect(gridColumns(20)).toBe(5)
+  it("lays out neighbors on a ring around the center", () => {
+    const four = layoutNeighborRing(["a", "b", "c", "d"], 0, 0)
+    // Clockwise from the top, on an ellipse stretched horizontally for wide nodes.
+    expect(four.get("a")).toEqual({ x: 0, y: -180 })
+    expect(four.get("b")).toEqual({ x: 384, y: 0 })
+    expect(four.get("c")).toEqual({ x: 0, y: 180 })
+    expect(four.get("d")).toEqual({ x: -384, y: 0 })
 
-    const keys = ["organization:o1", "person:p1", "location:l1"]
-    const positions = layoutNeighborGrid(keys, 500, 48)
-    expect(positions.size).toBe(3)
-    expect(positions.get("organization:o1")).toEqual({ x: 310, y: 48 })
-    expect(positions.get("person:p1")).toEqual({ x: 514, y: 48 })
-    expect(positions.get("location:l1")).toEqual({ x: 412, y: 140 })
+    // A pair sits either side of the subject.
+    const two = layoutNeighborRing(["a", "b"], 0, 0)
+    expect(two.get("a")).toEqual({ x: 384, y: 0 })
+    expect(two.get("b")).toEqual({ x: -384, y: 0 })
 
-    const metrics = egoGraphLayoutMetrics(3)
-    expect(metrics.centerX).toBe(500)
-    expect(metrics.neighborTopY).toBe(48)
-    expect(metrics.centerY).toBeGreaterThan(metrics.neighborTopY)
+    // The ring grows with the neighbor count so adjacent nodes don't overlap.
+    expect(ringRadius(4)).toBe(240)
+    expect(ringRadius(32)).toBeGreaterThan(800)
+  })
+
+  it("attaches edges on the sides that face each other", () => {
+    expect(facingSides({ x: 0, y: 0 }, { x: 0, y: -204 })).toEqual({
+      sourceSide: "top",
+      targetSide: "bottom",
+    })
+    expect(facingSides({ x: 0, y: 0 }, { x: -324, y: 0 })).toEqual({
+      sourceSide: "left",
+      targetSide: "right",
+    })
+    // Up and to the right of a wide node: the vertical offset dominates relative to height.
+    expect(facingSides({ x: 0, y: 0 }, { x: 229, y: -144 }).sourceSide).toBe("top")
+  })
+
+  it("groups ring neighbors by entity type, then name", () => {
+    const sorted = sortNeighborsForRing([
+      { entityType: "person", entityId: "1", displayName: "Zev" },
+      { entityType: "organization", entityId: "2", displayName: "Latham" },
+      { entityType: "person", entityId: "3", displayName: "Laura" },
+    ])
+    expect(sorted.map((ref) => ref.displayName)).toEqual(["Latham", "Laura", "Zev"])
   })
 
   it("formats nature labels for display", () => {

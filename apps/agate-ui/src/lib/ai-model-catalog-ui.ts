@@ -15,6 +15,20 @@ export const EMBEDDING_CAPABILITY = 'embedding'
 /** Core API / worker role for semantic document and query embeddings. */
 export const SEMANTIC_EMBEDDING_DEFAULT_ROLE = 'semantic.embedding'
 
+/** Role for article passage search (articles split into passages; Voyage context models). */
+export const ARTICLE_EMBEDDING_DEFAULT_ROLE = 'semantic.article_embedding'
+
+/** Only Voyage context models can split articles into passages. */
+export function supportsArticlePassageSearch(row: {
+  provider?: string | null
+  provider_model_id?: string | null
+}): boolean {
+  return (
+    (row.provider ?? '').toLowerCase() === 'voyage' &&
+    (row.provider_model_id ?? '').startsWith('voyage-context-')
+  )
+}
+
 /** Core API role for the project default generative model (HyDE, headless LLM uses). */
 export const GENERATIVE_DEFAULT_ROLE = 'generative.default'
 

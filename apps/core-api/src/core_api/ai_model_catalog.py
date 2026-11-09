@@ -671,6 +671,8 @@ def run_org_model_connection_test(
         elif prov == "azure":
             api_key = keys.get("AZURE_API_KEY")
             api_base = os.getenv("AZURE_API_BASE")
+        elif prov == "voyage":
+            api_key = keys.get("VOYAGE_API_KEY")
         else:
             api_key = (
                 keys.get("OPENAI_API_KEY")
@@ -706,6 +708,7 @@ def run_org_model_connection_test(
                 api_base=api_base,
                 timeout=60.0,
                 track_attempt=False,
+                model_config_json=row.config_json if isinstance(row.config_json, dict) else None,
             )
             if batch.batch_error or not batch.items or batch.items[0].vector is None:
                 raise RuntimeError(batch.batch_error or "Embedding test returned no vector")

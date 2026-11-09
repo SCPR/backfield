@@ -27,6 +27,24 @@ def test_backfill_defaults_to_dry_run() -> None:
     assert args.max_requests_per_article == 16
 
 
+def test_backfill_settings_enable_auto_connections_with_chosen_model() -> None:
+    import argparse
+
+    from backfield_cli.backfill_connections import backfill_settings
+    from backfield_entities.connections.eligibility import (
+        evaluate_auto_connections_eligibility,
+    )
+    from backfield_entities.ingest.db_output_settings import resolved_connections_llm
+
+    settings = backfill_settings(
+        argparse.Namespace(model="bedrock/profile-arn", model_config_id="cfg-1")
+    )
+
+    eligibility = evaluate_auto_connections_eligibility(settings)
+    assert eligibility.eligible is True, eligibility.reason
+    assert resolved_connections_llm(settings) == ("bedrock/profile-arn", "cfg-1")
+
+
 def test_backfill_rejects_request_budget_above_total_cap() -> None:
     assert (
         main(

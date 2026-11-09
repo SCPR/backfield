@@ -23,7 +23,7 @@ from backfield_entities.connections.natures import (
 AUTO_CONNECTION_MIN_CONFIDENCE = 0.9
 AUTO_CONNECTION_EVIDENCE_SOURCE = "dboutput_auto_connections"
 AUTO_CONNECTION_PROMPT_VERSION = "auto_connections_v1"
-AUTO_CONNECTION_PROMPT_VERSION_EVIDENCE_PAIRS = "auto_connections_v6"
+AUTO_CONNECTION_PROMPT_VERSION_EVIDENCE_PAIRS = "auto_connections_v7"
 
 __all__ = [
     "AUTO_CONNECTION_EVIDENCE_SOURCE",

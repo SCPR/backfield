@@ -23,7 +23,9 @@
     "./passwordChangeGate": "./src/passwordChangeGate.ts",
     "./AgateProductMark": "./src/AgateProductMark.tsx",
     "./StylebookProductMark": "./src/StylebookProductMark.tsx",
-    "./cn": "./src/cn.ts"
+    "./cn": "./src/cn.ts",
+    "./theme": "./src/theme.ts",
+    "./theme-dark.css": "./src/theme-dark.css"
   },
   "scripts": {
     "test": "vitest run"

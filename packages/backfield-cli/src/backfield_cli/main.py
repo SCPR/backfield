@@ -6,14 +6,18 @@ import argparse
 import sys
 
 from backfield_cli import backfill_connections as backfill_connections_cmd
+from backfield_cli import collapse_subsumed_connections as collapse_subsumed_connections_cmd
 from backfield_cli import doctor as doctor_cmd
+from backfield_cli import index_article_passages as index_article_passages_cmd
 from backfield_cli import init as init_cmd
 from backfield_cli import migrate as migrate_cmd
 from backfield_cli import migrate_connection_kg as migrate_connection_kg_cmd
 from backfield_cli import organization as organization_cmd
 from backfield_cli import repair_orphan_connections as repair_orphan_connections_cmd
 from backfield_cli import repair_s3_article_sources as repair_s3_article_sources_cmd
+from backfield_cli import retype_membership_connections as retype_membership_connections_cmd
 from backfield_cli import seed as seed_cmd
+from backfield_cli import set_embedding_dimensions as set_embedding_dimensions_cmd
 from backfield_cli import stack_cmd
 from backfield_cli import tenancy_audit as tenancy_audit_cmd
 
@@ -26,11 +30,15 @@ def main(argv: list[str] | None = None) -> int:
     init_cmd.register_subcommand(subparsers)
     doctor_cmd.register_subcommand(subparsers)
     backfill_connections_cmd.register_subcommand(subparsers)
+    collapse_subsumed_connections_cmd.register_subcommand(subparsers)
+    retype_membership_connections_cmd.register_subcommand(subparsers)
     tenancy_audit_cmd.register_subcommand(subparsers)
     repair_orphan_connections_cmd.register_subcommand(subparsers)
     repair_s3_article_sources_cmd.register_subcommand(subparsers)
     migrate_connection_kg_cmd.register_subcommand(subparsers)
     organization_cmd.register_subcommand(subparsers)
+    set_embedding_dimensions_cmd.register_subcommand(subparsers)
+    index_article_passages_cmd.register_subcommand(subparsers)
     stack_cmd.register_subcommands(subparsers)
     args = parser.parse_args(argv)
     handler = getattr(args, "handler", None)

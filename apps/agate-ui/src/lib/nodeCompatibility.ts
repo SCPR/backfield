@@ -1,8 +1,10 @@
 import { nodeMetadata } from '@/nodes/registry'
 import {
+  directInputSatisfiesUpstream,
   INPUT_NODE_TYPES,
   isInputBookendType,
   isOutputBookendType,
+  isPassthroughPort,
 } from '@/lib/flowValidation'
 
 export type NodeMetadataEntry = (typeof nodeMetadata)[number]
@@ -137,8 +139,10 @@ export function resolveEdgeHandles(
   const inputsToTry = requiredInputs.length > 0 ? requiredInputs : inputs
 
   for (const input of inputsToTry) {
-    const compatible = outputs.filter((output) =>
-      typesCompatible(String(output.type), String(input.type)),
+    const compatible = outputs.filter(
+      (output) =>
+        typesCompatible(String(output.type), String(input.type)) &&
+        (!isPassthroughPort(output) || output.id === input.id),
     )
     if (compatible.length === 0) continue
 
@@ -180,7 +184,11 @@ function parentOutputsCompatible(
   if (outputs.length === 0) return false
 
   return inputsToCheck.every((input) =>
-    outputs.some((output) => typesCompatible(String(output.type), String(input.type))),
+    outputs.some(
+      (output) =>
+        typesCompatible(String(output.type), String(input.type)) &&
+        (!isPassthroughPort(output) || output.id === input.id),
+    ),
   )
 }
 
@@ -358,7 +366,10 @@ export function getCompatibleNextNodes(
     }
 
     const required = meta.requiredUpstreamNodes ?? []
-    if (!upstreamRequirementsMet(required, ancestryWithParent)) {
+    if (
+      !upstreamRequirementsMet(required, ancestryWithParent) &&
+      !directInputSatisfiesUpstream(meta.type, parentType)
+    ) {
       disabled.push(toEntry(meta, false, upstreamFailureReason(meta, ancestryWithParent)))
       continue
     }
@@ -427,7 +438,10 @@ export function getCompatibleInsertNodes(
     }
 
     const candidateRequired = meta.requiredUpstreamNodes ?? []
-    if (!upstreamRequirementsMet(candidateRequired, ancestryWithSource)) {
+    if (
+      !upstreamRequirementsMet(candidateRequired, ancestryWithSource) &&
+      !directInputSatisfiesUpstream(meta.type, sourceType)
+    ) {
       disabled.push(toEntry(meta, false, upstreamFailureReason(meta, ancestryWithSource)))
       continue
     }

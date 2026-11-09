@@ -47,6 +47,7 @@ const CREDENTIAL_KEY_TYPES = [
   { value: 'GEMINI_API_KEY', label: 'Gemini API Key', description: 'For Google Gemini models' },
   { value: 'OPENROUTER_API_KEY', label: 'OpenRouter API Key', description: 'For models routed through OpenRouter' },
   { value: 'AZURE_API_KEY', label: 'Azure OpenAI API Key', description: 'For Azure-hosted OpenAI deployments' },
+  { value: 'VOYAGE_API_KEY', label: 'Voyage AI API Key', description: 'For Voyage embedding models' },
   {
     value: 'AZURE_API_BASE',
     label: 'Azure OpenAI endpoint',

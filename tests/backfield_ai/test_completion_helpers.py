@@ -45,6 +45,14 @@ def test_litellm_json_mode_flag(model: str, expected: bool) -> None:
         ("gpt-4o-mini", 0.2, 0.2),
         ("anthropic/claude-sonnet-4-5-20250929", 0.2, 0.2),
         ("gpt-5-nano", None, None),
+        ("anthropic/claude-sonnet-5-5", 0.0, None),
+        ("bedrock/us.anthropic.claude-haiku-5-5", 0.2, None),
+        ("anthropic/claude-fable-5-1", 0.0, None),
+        (
+            "bedrock/arn:aws:bedrock:us-west-2:123456789012:application-inference-profile/abc123",
+            0.0,
+            None,
+        ),
     ],
 )
 def test_litellm_completion_temperature(model: str, temperature: float | None, expected) -> None:
@@ -320,6 +328,40 @@ def test_completion_text_sync_omits_max_tokens_for_non_gpt56(
     )
 
     assert "max_tokens" not in captured
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        "anthropic/claude-sonnet-5-5",
+        "bedrock/arn:aws:bedrock:us-west-2:123456789012:application-inference-profile/abc123",
+    ],
+)
+def test_completion_text_sync_defaults_max_tokens_and_omits_temperature_for_claude5(
+    monkeypatch: pytest.MonkeyPatch,
+    model: str,
+) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_completion(**kwargs: object) -> object:
+        captured.update(kwargs)
+        return _ok_resp('{"locations":[]}')
+
+    monkeypatch.setattr(litellm, "completion", fake_completion)
+    monkeypatch.setattr(litellm, "completion_cost", lambda **_kw: 0.0)
+
+    completion_text_sync(
+        litellm_model=model,
+        messages=[{"role": "user", "content": "hi"}],
+        api_key="test",
+        max_tokens=None,
+        temperature=0.0,
+        timeout=30.0,
+        force_json_response=True,
+    )
+
+    assert captured.get("max_tokens") == 16384
+    assert "temperature" not in captured
 
 
 def test_completion_text_sync_gpt56_retries_truncated_json(

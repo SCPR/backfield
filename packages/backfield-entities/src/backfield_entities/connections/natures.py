@@ -19,6 +19,8 @@ NATURE_SUBSUMPTIONS: dict[str, frozenset[str]] = {
     "leads": frozenset({"works_for", "member_of"}),
     "coaches": frozenset({"works_for", "member_of"}),
     "plays_for": frozenset({"member_of"}),
+    # A member of a body (council, board, legislature) is not separately its employee.
+    "member_of": frozenset({"works_for"}),
     "located_at": frozenset({"based_in"}),
     "holds_office_in": frozenset({"represents"}),
     "spouse_of": frozenset({"family_of"}),

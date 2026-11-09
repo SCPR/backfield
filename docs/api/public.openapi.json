@@ -1612,6 +1612,29 @@
         "title": "PublicArticleOut",
         "type": "object"
       },
+      "PublicArticlePassageHitOut": {
+        "properties": {
+          "passage_index": {
+            "title": "Passage Index",
+            "type": "integer"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "passage_index",
+          "text",
+          "score"
+        ],
+        "title": "PublicArticlePassageHitOut",
+        "type": "object"
+      },
       "PublicArticlePersonOut": {
         "properties": {
           "affiliation": {
@@ -1941,6 +1964,20 @@
             "title": "Metadata",
             "type": "array"
           },
+          "passages": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PublicArticlePassageHitOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passages"
+          },
           "preview": {
             "anyOf": [
               {
@@ -2096,6 +2133,16 @@
           },
           "query": {
             "title": "Query",
+            "type": "string"
+          },
+          "search_mode": {
+            "default": "articles",
+            "description": "passages: articles ranked by their best-matching passage, with the matching passages on each item (when the project sets an article search model); articles: one embedding per article",
+            "enum": [
+              "passages",
+              "articles"
+            ],
+            "title": "Search Mode",
             "type": "string"
           }
         },

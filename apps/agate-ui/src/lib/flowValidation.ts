@@ -72,6 +72,33 @@ export function isInputBookendType(type: string | undefined): boolean {
   return type != null && (INPUT_BOOKEND_TYPES as readonly string[]).includes(type)
 }
 
+type NodePort = { id: string; type?: string; passthrough?: boolean }
+
+/**
+ * True when a step's `requiredUpstreamNodes` rule is met by an input wired straight into it:
+ * the step declares `satisfiedByInputData` (e.g. Geocode Agent → `locations`) and the input
+ * declares a matching pass-through output (documents that already carry saved places).
+ */
+export function directInputSatisfiesUpstream(
+  nodeType: string | undefined,
+  parentType: string | undefined,
+): boolean {
+  if (!nodeType || !parentType || !isInputBookendType(parentType)) return false
+  const meta = nodeMetadata.find((m) => m.type === nodeType) as
+    | { satisfiedByInputData?: string }
+    | undefined
+  const key = meta?.satisfiedByInputData
+  if (!key) return false
+  const parentOutputs = (nodeMetadata.find((m) => m.type === parentType)?.outputs ??
+    []) as readonly NodePort[]
+  return parentOutputs.some((output) => output.id === key)
+}
+
+/** Pass-through ports only connect to an input with the same id (never picked as a fallback). */
+export function isPassthroughPort(port: unknown): boolean {
+  return (port as NodePort | undefined)?.passthrough === true
+}
+
 export function isOutputBookendType(type: string | undefined): boolean {
   return type != null && (OUTPUT_BOOKEND_TYPES as readonly string[]).includes(type)
 }
@@ -504,11 +531,16 @@ export function validateRequiredUpstreamNodes(graph: FlowGraph): FlowValidationR
     if (required.length === 0) continue
     const ancestors = ancestorTypes(node.id)
     if (!required.some((type) => ancestors.has(type))) {
+      const fedByInput = (incoming.get(node.id) ?? []).some((parentId) =>
+        directInputSatisfiesUpstream(node.type, byId.get(parentId)?.type),
+      )
+      if (fedByInput) continue
       if (node.type === 'GeocodeAgent') {
         return {
           ok: false,
           title: 'Geocode needs places',
-          description: 'Add Place Extract before Geocode Agent on the same branch.',
+          description:
+            'Add Place Extract before Geocode Agent on the same branch, or connect it straight to an input whose documents include saved places.',
           severity: 'error',
         }
       }

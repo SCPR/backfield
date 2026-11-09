@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 from backfield_db import (
     BackfieldAiModelConfig,
     BackfieldAiProjectModelOverride,
@@ -12,6 +14,27 @@ from backfield_db.crypto import decrypt_secret
 from sqlmodel import Session, select
 
 from backfield_ai.litellm_model import effective_litellm_model_row
+
+
+def catalog_token_prices(
+    session: Session,
+    *,
+    project_id: int,
+    model_config_id: str | None,
+) -> tuple[Decimal | None, Decimal | None]:
+    """Return the saved ``(input_token_price, output_token_price)`` for a catalog model.
+
+    Prices are per token. Returns ``(None, None)`` when the config is missing or belongs to
+    another organization than the project.
+    """
+    mc = (model_config_id or "").strip() or None
+    if not mc:
+        return None, None
+    proj = session.get(BackfieldProject, project_id)
+    cfg = session.get(BackfieldAiModelConfig, mc)
+    if proj is None or cfg is None or int(cfg.organization_id) != int(proj.organization_id):
+        return None, None
+    return cfg.input_token_price, cfg.output_token_price
 
 
 def resolve_llm_auth_for_model_config(

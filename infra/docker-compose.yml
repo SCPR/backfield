@@ -78,6 +78,8 @@ services:
     entrypoint: ["backfield-migrate"]
     environment:
       BACKFIELD_DATABASE_URL_DIRECT: postgresql+psycopg://postgres:postgres@postgres:5432/backfield
+      # Migrations that add vector columns size them from this; it must match the app services.
+      BACKFIELD_EMBEDDING_DIMENSIONS: ${BACKFIELD_EMBEDDING_DIMENSIONS:-1536}
     depends_on:
       postgres:
         condition: service_healthy

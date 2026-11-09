@@ -34,6 +34,7 @@ from backfield_db import (
     SubstrateArticle,
     SubstrateArticleEmbedding,
     SubstrateArticleMeta,
+    SubstrateArticlePassage,
     SubstrateCustomRecord,
     SubstrateImage,
     SubstrateImageEmbedding,
@@ -436,6 +437,11 @@ def _delete_project_substrate_and_stylebook_storage(session: Session, *, project
         session.exec(
             delete(SubstrateArticleEmbedding).where(
                 col(SubstrateArticleEmbedding.article_id).in_(article_ids)
+            )
+        )
+        session.exec(
+            delete(SubstrateArticlePassage).where(
+                col(SubstrateArticlePassage.article_id).in_(article_ids)
             )
         )
         session.exec(
