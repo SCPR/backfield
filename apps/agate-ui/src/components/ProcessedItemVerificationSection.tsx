@@ -12,7 +12,6 @@ import {
 } from '@/components/AddPlaceWorkflowPanel'
 import { ProcessedItemEditorReviewBanner } from '@/components/ProcessedItemEditorReviewBanner'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import type { Graph, ProcessedItem } from '@/lib/api'
 import { getProcessedItem, patchProcessedItemOverlay } from '@/lib/api'
@@ -943,26 +942,20 @@ export function ProcessedItemVerificationSection({
   }, [geometryEditing, cancelGeometryEdit])
 
   return (
-    <Card className="isolate overflow-hidden border-primary/30">
-      <CardContent className="space-y-3 pt-6">
+    <div className="space-y-4">
         <ProcessedItemEditorReviewBanner item={item} section="places" />
 
-        <div className="grid shrink-0 gap-x-3 gap-y-1 lg:grid-cols-2 lg:items-start">
-          <div className="space-y-1">
-            <h2 className="text-lg font-semibold text-foreground">Review and edit places</h2>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Review and edit places</h2>
             <p className="text-sm text-muted-foreground">
-              Use the tools on this page to add, delete or edit places extracted from this text.
+              Select a place to highlight its mentions, then choose Edit to change details.
             </p>
           </div>
           {article?.body?.trim() ? (
-            <div className="flex justify-end lg:col-start-2">
               <Button
                 type="button"
                 size="sm"
-                className={cn(
-                  'shrink-0',
-                  addPlaceMode ? undefined : 'bg-black text-white hover:bg-black/90',
-                )}
                 variant={addPlaceMode ? 'outline' : 'default'}
                 disabled={reviewLocked || addPlaceSelection !== null}
                 onClick={() => {
@@ -981,13 +974,12 @@ export function ProcessedItemVerificationSection({
                 {addPlaceMode ? null : <Plus className="mr-2 h-4 w-4" />}
                 {addPlaceMode ? 'Cancel' : 'Add place'}
               </Button>
-            </div>
           ) : null}
         </div>
 
         <div
           className={cn(
-            'grid min-h-0 gap-3 overflow-hidden lg:grid-cols-2 lg:items-stretch',
+            'grid min-h-0 gap-4 overflow-hidden lg:grid-cols-2 lg:items-stretch',
             geometryEditing || addPlaceSelection
               ? 'h-[min(64rem,calc(100dvh-8rem))]'
               : 'h-[min(52rem,calc(100dvh-10rem))]',
@@ -1146,7 +1138,6 @@ export function ProcessedItemVerificationSection({
             />
           )}
         </div>
-      </CardContent>
-    </Card>
+    </div>
   )
 }

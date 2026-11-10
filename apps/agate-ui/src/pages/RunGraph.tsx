@@ -339,7 +339,7 @@ export default function RunGraph() {
                 onClick={handleRunFlow}
                 disabled={running || graphInvalid}
                 title={graphInvalid ? 'Fix invalid connections before running this flow.' : undefined}
-                className="bg-black text-white hover:bg-gray-800"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 {running ? (
                   <>

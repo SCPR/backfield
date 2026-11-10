@@ -38,10 +38,10 @@ export function bookendPreviewEdge(inputNode: Node, outputNode: Node): Edge {
     animated: false,
     markerEnd: {
       type: MarkerType.ArrowClosed,
-      color: '#000000',
+      color: 'hsl(var(--foreground))',
       width: 18,
       height: 18,
     },
-    style: { stroke: '#000000', strokeWidth: 1 },
+    style: { stroke: 'hsl(var(--foreground))', strokeWidth: 1 },
   }
 }

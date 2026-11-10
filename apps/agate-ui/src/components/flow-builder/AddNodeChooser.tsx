@@ -283,7 +283,7 @@ export default function AddNodeChooser({
               className={cn(
                 'flex w-full items-center justify-between rounded-md px-3 py-2.5 text-left text-sm transition-colors',
                 activeGroup?.category === group.category
-                  ? 'bg-black text-white'
+                  ? 'bg-primary text-primary-foreground'
                   : 'text-neutral-200 hover:bg-white/10',
               )}
               onMouseEnter={() => setActiveCategory(group.category)}

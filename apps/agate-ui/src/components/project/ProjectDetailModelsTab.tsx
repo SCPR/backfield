@@ -412,7 +412,7 @@ export default function ProjectDetailModelsTab({ projectId }: ProjectDetailModel
                 size="sm"
                 variant="outline"
                 className={
-                  isDefault ? 'border-black bg-black text-white hover:bg-black/90' : undefined
+                  isDefault ? 'border-primary bg-primary text-primary-foreground hover:bg-primary/90' : undefined
                 }
                 disabled={busy || isDefault}
                 aria-pressed={isDefault}
@@ -430,7 +430,7 @@ export default function ProjectDetailModelsTab({ projectId }: ProjectDetailModel
                 variant="outline"
                 className={
                   isArticleSearch
-                    ? 'border-black bg-black text-white hover:bg-black/90'
+                    ? 'border-primary bg-primary text-primary-foreground hover:bg-primary/90'
                     : undefined
                 }
                 disabled={busy || isArticleSearch}
@@ -445,7 +445,7 @@ export default function ProjectDetailModelsTab({ projectId }: ProjectDetailModel
             <Button
               type="button"
               size="sm"
-              className="bg-black text-white hover:bg-black/90"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               disabled={busy}
               onClick={() => openCredentialDialog(row)}
             >
@@ -644,7 +644,7 @@ export default function ProjectDetailModelsTab({ projectId }: ProjectDetailModel
             <Button
               type="button"
               disabled={credentialSaving}
-              className="bg-black text-white hover:bg-black/90"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => void submitCredentialOverride()}
             >
               {credentialSaving ? (

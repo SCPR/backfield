@@ -657,7 +657,7 @@ export default function AiModelsSettingsPage() {
           <Button
             type="button"
             size="sm"
-            className="bg-black text-white hover:bg-black/90 sm:mt-1"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 sm:mt-1"
             onClick={() => openAddVendorCredentialModal()}
             disabled={loading || orgId == null}
           >
@@ -1137,7 +1137,7 @@ export default function AiModelsSettingsPage() {
             </Button>
             <Button
               type="button"
-              className="bg-black text-white hover:bg-black/90"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               disabled={
                 submitting ||
                 (addTab === 'preset' && curatedOptionsForAddKind.length === 0)
@@ -1415,7 +1415,7 @@ export default function AiModelsSettingsPage() {
             </Button>
             <Button
               type="button"
-              className="bg-black text-white hover:bg-black/90"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               disabled={submitting || editRow == null}
               onClick={() => void handleEditSave()}
             >
@@ -1505,7 +1505,7 @@ export default function AiModelsSettingsPage() {
             </Button>
             <Button
               type="button"
-              className="bg-black text-white hover:bg-black/90"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               disabled={
                 vendorCredSaving ||
                 !vendorCredDisplayName.trim() ||

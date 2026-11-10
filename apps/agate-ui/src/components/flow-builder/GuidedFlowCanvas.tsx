@@ -333,10 +333,12 @@ const PANEL_SELECTED_NODE_ZOOM = 1.2
 const PAN_EXTENT_PADDING_PX = 1500
 const TIDY_BUTTON_ANIMATION_MS = 420
 
-const SOLID_EDGE_STYLE = { stroke: '#000000', strokeWidth: 1 }
+// Follows the theme (near-black in light mode, near-white in dark mode).
+const EDGE_COLOR = 'hsl(var(--foreground))'
+const SOLID_EDGE_STYLE = { stroke: EDGE_COLOR, strokeWidth: 1 }
 const SOLID_EDGE_MARKER = {
   type: MarkerType.ArrowClosed,
-  color: '#000000',
+  color: EDGE_COLOR,
   width: 18,
   height: 18,
 }
