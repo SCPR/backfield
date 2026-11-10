@@ -221,6 +221,21 @@ def _persist_multi_value_block(
     }
 
 
+def _with_companion_blocks(blocks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Expand each block's ``companion_blocks`` (e.g. a temporality expiry row) after it."""
+    expanded: list[dict[str, Any]] = []
+    for block in blocks:
+        expanded.append(block)
+        companions = block.get("companion_blocks")
+        if isinstance(companions, list):
+            expanded.extend(
+                companion
+                for companion in companions
+                if isinstance(companion, dict) and str(companion.get("meta_type") or "").strip()
+            )
+    return expanded
+
+
 def _article_metadata_blocks(consolidated: dict[str, Any]) -> list[dict[str, Any]]:
     all_raw = consolidated.get("article_metadata_all")
     if isinstance(all_raw, list):
@@ -230,9 +245,9 @@ def _article_metadata_blocks(consolidated: dict[str, Any]) -> list[dict[str, Any
             if isinstance(block, dict) and str(block.get("meta_type") or "").strip()
         ]
         if blocks:
-            return blocks
+            return _with_companion_blocks(blocks)
     single = _article_metadata_block(consolidated)
-    return [single] if single is not None else []
+    return _with_companion_blocks([single]) if single is not None else []
 
 
 def _persist_one_article_metadata_block(

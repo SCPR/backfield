@@ -17,6 +17,7 @@ PromptPresetId = Literal[
     "geographic_scope",
     "information_needs",
     "user_need",
+    "temporality",
     "custom",
 ]
 
@@ -28,11 +29,17 @@ PRESET_IDS: tuple[str, ...] = (
     "geographic_scope",
     "information_needs",
     "user_need",
+    "temporality",
     "custom",
 )
 
 MULTI_VALUE_PRESET_IDS: frozenset[str] = frozenset({"topic", "information_needs"})
 MAX_MULTI_VALUE_COUNT = 3
+
+# Presets whose answer also carries an expiry date (expires_after + expiry_basis). The date is
+# persisted as a companion metadata row of type "<meta_type>_expiry" (category "none" when absent).
+EXPIRY_PRESET_IDS: frozenset[str] = frozenset({"temporality"})
+EXPIRY_NONE = "none"
 
 MULTI_VALUE_LIST_KEYS: dict[str, str] = {
     "topic": "topics",
@@ -47,6 +54,7 @@ PRESET_LABELS: dict[str, str] = {
     "geographic_scope": "Scope",
     "information_needs": "Critical information need",
     "user_need": "User need",
+    "temporality": "Temporality",
     "custom": "Custom",
 }
 
@@ -102,6 +110,14 @@ def preset_output_format_relpath(preset_id: str) -> str:
     if preset_id == "subject":
         return "prompts/_output_format_primary_subject.json"
     return "prompts/_output_format.json"
+
+
+def is_expiry_preset(preset_id: str) -> bool:
+    return preset_id in EXPIRY_PRESET_IDS
+
+
+def expiry_meta_type(meta_type: str) -> str:
+    return f"{meta_type}_expiry"
 
 
 def is_multi_value_preset(preset_id: str) -> bool:

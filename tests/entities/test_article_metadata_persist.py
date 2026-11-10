@@ -374,3 +374,59 @@ def test_persist_multiple_article_metadata_blocks() -> None:
             select(SubstrateArticleMeta).where(SubstrateArticleMeta.article_id == article_id)
         ).all()
         assert {row.meta_type for row in rows} == {"topic", "format"}
+
+
+def test_persist_temporality_expiry_companion_and_rerun_replaces_it() -> None:
+    def block(expiry_category: str, rationale: str) -> dict:
+        return {
+            "meta_type": "temporality",
+            "category": "supersedable",
+            "rationale": "Hinges on the Emmys airing Monday.",
+            "confidence": 0.9,
+            "prompt_preset": "temporality",
+            "expires_after": None if expiry_category == "none" else expiry_category,
+            "companion_blocks": [
+                {
+                    "meta_type": "temporality_expiry",
+                    "category": expiry_category,
+                    "rationale": rationale,
+                    "confidence": 0.9,
+                    "prompt_preset": "temporality",
+                }
+            ],
+        }
+
+    engine = _engine()
+    with Session(engine) as session:
+        article_id = _seed_article(session)
+        summary = persist_article_metadata_after_db_output(
+            session,
+            article_id=article_id,
+            consolidated={"article_metadata_all": [block("2026-01-19", "will air on Monday")]},
+            policy="smart_merge",
+        )
+        assert summary["status"] == "succeeded"
+        assert summary["count"] == 2
+        session.commit()
+        rows = session.exec(
+            select(SubstrateArticleMeta).where(SubstrateArticleMeta.article_id == article_id)
+        ).all()
+        assert {(row.meta_type, row.category) for row in rows} == {
+            ("temporality", "supersedable"),
+            ("temporality_expiry", "2026-01-19"),
+        }
+
+        persist_article_metadata_after_db_output(
+            session,
+            article_id=article_id,
+            consolidated={"article_metadata": block("none", "No publication-relative expiry.")},
+            policy="smart_merge",
+        )
+        session.commit()
+        expiry_rows = session.exec(
+            select(SubstrateArticleMeta).where(
+                SubstrateArticleMeta.article_id == article_id,
+                SubstrateArticleMeta.meta_type == "temporality_expiry",
+            )
+        ).all()
+        assert [row.category for row in expiry_rows] == ["none"]

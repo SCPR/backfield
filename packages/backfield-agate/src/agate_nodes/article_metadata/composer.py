@@ -10,7 +10,11 @@ from typing import Any
 from agate_runtime.upstream_input import flatten_upstream_inputs
 
 from agate_nodes.article_metadata.category_labels import format_allowed_categories_enforcement
-from agate_nodes.article_metadata.presets import MAX_MULTI_VALUE_COUNT, multi_value_list_key
+from agate_nodes.article_metadata.presets import (
+    MAX_MULTI_VALUE_COUNT,
+    is_expiry_preset,
+    multi_value_list_key,
+)
 
 _CATEGORIES_HEADER = "## categories"
 _SUBJECT_LABELS_HEADER = "## subject labels"
@@ -173,6 +177,22 @@ def compose_article_metadata_prompt(
                 "- Do not repeat the same category.\n\n"
                 "Example shape:\n"
                 f"{example_shape}"
+            ),
+        )
+    elif is_expiry_preset(preset_id):
+        prompt = _append_output_instructions(
+            body=body,
+            categories=categories,
+            output_suffix=(
+                "Return only valid JSON with exactly these keys: "
+                "category, confidence, rationale, expires_after, expiry_basis.\n"
+                "- category must be one of the allowed category values listed above.\n"
+                "- confidence is high, medium, or low.\n"
+                "- rationale is one sentence specific to this story.\n"
+                "- expires_after is a YYYY-MM-DD date or null; null unless the story hinges on a "
+                "publication-relative moment you can resolve from the publish date.\n"
+                "- expiry_basis is the verbatim phrase you resolved, or null when expires_after "
+                "is null."
             ),
         )
     else:

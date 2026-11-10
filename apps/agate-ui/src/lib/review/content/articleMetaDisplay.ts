@@ -17,6 +17,8 @@ const META_TYPE_LABELS: Record<string, string> = {
   geographic_scope: 'Scope',
   information_needs: 'Critical information need',
   user_need: 'User need',
+  temporality: 'Temporality',
+  temporality_expiry: 'Expires after',
   custom: 'Custom',
 }
 

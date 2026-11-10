@@ -8,6 +8,7 @@ export const ARTICLE_METADATA_PRESET_OPTIONS = [
   { id: 'temporal_orientation', label: 'Timeframe' },
   { id: 'topic', label: 'Topic' },
   { id: 'user_need', label: 'User need' },
+  { id: 'temporality', label: 'Temporality' },
   { id: 'custom', label: 'Custom' },
 ] as const
 

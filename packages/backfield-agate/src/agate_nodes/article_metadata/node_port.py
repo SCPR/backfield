@@ -27,12 +27,19 @@ from agate_nodes.article_metadata.composer import (
     load_package_file,
     resolve_text,
 )
+from agate_nodes.article_metadata.expiry import (
+    expiry_companion_block,
+    normalize_confidence_words,
+    normalize_expiry,
+    resolve_publish_date,
+)
 from agate_nodes.article_metadata.parse import (
     normalize_llm_json_payload,
     parse_article_metadata_response,
     parse_multi_value_metadata_response,
 )
 from agate_nodes.article_metadata.presets import (
+    is_expiry_preset,
     is_multi_value_preset,
     multi_value_list_key,
     normalize_prompt_preset,
@@ -113,7 +120,10 @@ class ArticleMetadataNode:
         resolved_meta_type: str,
         allowed_categories: list[str],
         fallback_to_other: bool,
+        publish_date: str | None = None,
     ) -> dict[str, Any]:
+        if is_expiry_preset(preset_id):
+            response_data = normalize_confidence_words(response_data)
         if is_multi_value_preset(preset_id):
             parsed_items = parse_multi_value_metadata_response(
                 response_data,
@@ -153,6 +163,22 @@ class ArticleMetadataNode:
         }
         if preset_id == "subject":
             metadata_block["subject"] = parsed.category
+        if is_expiry_preset(preset_id) and isinstance(response_data, dict):
+            expiry = normalize_expiry(
+                response_data.get("expires_after"),
+                response_data.get("expiry_basis"),
+                publish_date,
+            )
+            metadata_block.update(expiry)
+            metadata_block["publish_date"] = publish_date
+            metadata_block["companion_blocks"] = [
+                expiry_companion_block(
+                    meta_type=resolved_meta_type,
+                    expiry=expiry,
+                    confidence=parsed.confidence,
+                    prompt_preset=preset_id,
+                )
+            ]
         return metadata_block
 
     async def run(
@@ -175,6 +201,12 @@ class ArticleMetadataNode:
             preset_id,
             custom_meta_type=params.meta_type,
         )
+        publish_date = resolve_publish_date(flattened)
+        if is_expiry_preset(preset_id):
+            prompt_flattened = {
+                **prompt_flattened,
+                "publish_date": publish_date or "Unknown",
+            }
         output_format = load_package_file(preset_output_format_relpath(preset_id))
         prompt, allowed_categories = compose_article_metadata_prompt(
             prompt_template=prompt_template,
@@ -266,6 +298,7 @@ class ArticleMetadataNode:
                 resolved_meta_type=resolved_meta_type,
                 allowed_categories=allowed_categories,
                 fallback_to_other=fallback_to_other,
+                publish_date=publish_date,
             )
 
         try:
