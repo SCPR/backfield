@@ -45,8 +45,10 @@ def _extract_subject_labels_from_prompt(prompt: str) -> list[str]:
         if stripped.lower().startswith(_SUBJECT_LABELS_HEADER):
             in_section = True
             continue
-        if in_section and stripped.startswith("## ") and not stripped.lower().startswith(
-            _SUBJECT_LABELS_HEADER
+        if (
+            in_section
+            and stripped.startswith("## ")
+            and not stripped.lower().startswith(_SUBJECT_LABELS_HEADER)
         ):
             break
         if not in_section:
@@ -185,14 +187,16 @@ def compose_article_metadata_prompt(
             categories=categories,
             output_suffix=(
                 "Return only valid JSON with exactly these keys: "
-                "category, confidence, rationale, expires_after, expiry_basis.\n"
+                "category, confidence, rationale, expires_after, expiry_kind, expiry_basis.\n"
                 "- category must be one of the allowed category values listed above.\n"
                 "- confidence is high, medium, or low.\n"
                 "- rationale is one sentence specific to this story.\n"
                 "- expires_after is a YYYY-MM-DD date or null; null unless the story hinges on a "
                 "publication-relative moment you can resolve from the publish date.\n"
-                "- expiry_basis is the verbatim phrase you resolved, or null when expires_after "
-                "is null."
+                "- expiry_kind is dated, unresolved, open_ended, or none; dated if and only if "
+                "expires_after is a date.\n"
+                "- expiry_basis is the verbatim phrase you resolved (for unresolved, the phrase "
+                "naming the moment you could not date), or null."
             ),
         )
     else:

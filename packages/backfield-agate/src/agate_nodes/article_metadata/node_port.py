@@ -31,6 +31,7 @@ from agate_nodes.article_metadata.expiry import (
     expiry_companion_block,
     normalize_confidence_words,
     normalize_expiry,
+    normalize_expiry_kind,
     resolve_publish_date,
 )
 from agate_nodes.article_metadata.parse import (
@@ -122,6 +123,9 @@ class ArticleMetadataNode:
         fallback_to_other: bool,
         publish_date: str | None = None,
     ) -> dict[str, Any]:
+        raw_confidence = (
+            response_data.get("confidence") if isinstance(response_data, dict) else None
+        )
         if is_expiry_preset(preset_id):
             response_data = normalize_confidence_words(response_data)
         if is_multi_value_preset(preset_id):
@@ -164,10 +168,16 @@ class ArticleMetadataNode:
         if preset_id == "subject":
             metadata_block["subject"] = parsed.category
         if is_expiry_preset(preset_id) and isinstance(response_data, dict):
-            expiry = normalize_expiry(
-                response_data.get("expires_after"),
-                response_data.get("expiry_basis"),
-                publish_date,
+            expiry = normalize_expiry_kind(
+                kind=response_data.get("expiry_kind"),
+                category=parsed.category,
+                raw_confidence=raw_confidence,
+                expiry=normalize_expiry(
+                    response_data.get("expires_after"),
+                    response_data.get("expiry_basis"),
+                    publish_date,
+                ),
+                basis=response_data.get("expiry_basis"),
             )
             metadata_block.update(expiry)
             metadata_block["publish_date"] = publish_date
@@ -287,8 +297,7 @@ class ArticleMetadataNode:
         except json.JSONDecodeError as exc:
             preview = (response_text or "")[:800]
             raise ValueError(
-                "Failed to parse LLM response as article metadata: "
-                f"{exc}. Preview: {preview!r}"
+                f"Failed to parse LLM response as article metadata: {exc}. Preview: {preview!r}"
             ) from exc
 
         def build_metadata(*, fallback_to_other: bool) -> dict[str, Any]:

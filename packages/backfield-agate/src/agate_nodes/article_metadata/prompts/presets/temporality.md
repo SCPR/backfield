@@ -8,12 +8,13 @@
 
 Classify how the story at the end of this prompt relates to time, and determine whether it hinges on a moment that expires. Return only valid JSON.
 
-Two independent judgments:
+Three judgments:
 
 1. **`category`** (the temporal class) — does this story's usefulness decay, and if so, how?
 2. **`expires_after`** — is there a specific date after which it stops being current?
+3. **`expiry_kind`** — why there is, or is not, a date: a confident date, a moment you could not date, a status with no scheduled end, or nothing that expires.
 
-A story can be `evergreen` with no expiry, `supersedable` with a hard expiry, or `anchored` with no expiry at all. Decide each on its own.
+A story can be `evergreen` with no expiry, `supersedable` with a hard expiry, or `anchored` with no expiry at all. Decide the class and the expiry each on its own; `expiry_kind` must agree with `expires_after`.
 
 ## The classification test
 
@@ -53,7 +54,7 @@ Set a date only when **all three** hold:
 
 1. The story hinges on a moment — an event, deadline, window, or "this week" framing — such that after it passes, the story is no longer a useful thing to recommend.
 2. That moment is **relative to publication**, not to something inside the story's own narrative.
-3. You can resolve it to a specific date from the publish date given below.
+3. You can resolve it to a specific date from the publish date given below, **with confidence**. A calendar date stated outright in the story ("the board is expected to vote Oct. 21") counts; take its year from the publish date.
 
 ### The distinction that matters most
 
@@ -68,7 +69,7 @@ Relative dates come in two kinds, and only one is resolvable against the publish
 - "Belafonte and the estate settled out of court **the next year**" → the year after *the lawsuit*, not after publication
 - "The ceremony was delayed amidst the strikes **last year**" → relative to the events described
 
-Resolving a narrative-relative phrase against the publish date produces a confidently wrong date. **When you cannot tell which kind you are looking at, return `null`.**
+Resolving a narrative-relative phrase against the publish date produces a confidently wrong date. **When you cannot tell which kind you are looking at, return `null`** (with `expiry_kind` `unresolved` if the story does hinge on that moment).
 
 ### Resolvable is not the same as expiring
 
@@ -78,7 +79,18 @@ Ask: *after this date passes, is this story still worth recommending to a reader
 
 ### Which direction to err
 
-A wrong expiry silently removes a good story from every future recommendation. A missing expiry merely leaves things as they are. **When in doubt, return `null`.**
+**A date must be confident. When in doubt, return `null` — and say why in `expiry_kind`.** A guessed date is wrong in both directions: too early removes a good story, too late keeps a stale one presented as current. But `null` is not a free pass either. If the story hinges on a moment you could not date, mark it `unresolved`: such a story is treated as possibly stale and stops being recommended soon. Do not use `open_ended` or `none` to avoid a hard call about a moment the story is built around.
+
+## `expiry_kind`
+
+Exactly one of:
+
+- **`dated`** — all three conditions above hold and `expires_after` holds the date.
+- **`unresolved`** — the story hinges on a forthcoming moment (conditions 1 and 2 hold), but you cannot resolve it to a date with confidence: "soon", "later this fall", "in the coming weeks", a weekday you cannot place, or a phrase you cannot tell is publication-relative. `expires_after` is `null`.
+- **`open_ended`** — the story's central claim is a current status that will stop being true when something **unscheduled** happens, and the story names no moment to date: a rating that stands until the next evaluation, who currently holds a post, a proposal pending with no vote set, a policy in effect until changed. `expires_after` is `null`. This is a confident answer, not a doubtful one: there is no date because none exists.
+- **`none`** — nothing in the story stops being current: evergreen, anchored, and recurring_instance stories whose specifics stay true, and stories whose dates are reported past facts. `expires_after` is `null`.
+
+`dated` requires a date and a date requires `dated`. A `supersedable` story is `dated`, `unresolved` or `open_ended`, never `none`.
 
 ## Fields
 
@@ -102,9 +114,13 @@ One sentence, under 25 words, specific to *this* story. Name what makes it decay
 
 `YYYY-MM-DD`, or `null`. Null unless all three conditions above hold.
 
+### expiry_kind
+
+`dated`, `unresolved`, `open_ended`, or `none`, as defined above.
+
 ### expiry_basis
 
-The **verbatim phrase** from the story that you resolved, or `null` when `expires_after` is null. This is what makes an expiry auditable against the text — a date with no basis cannot be checked.
+The **verbatim phrase** from the story that you resolved, or `null` when `expires_after` is null. For `unresolved`, give the verbatim phrase naming the moment you could not date. This is what makes an expiry auditable against the text — a date with no basis cannot be checked.
 
 ## Output
 
@@ -116,6 +132,7 @@ Return **only** valid JSON in exactly this shape. No text before or after.
   "confidence": "high",
   "rationale": "Hinges on the Emmys airing Monday; afterward the how-to-watch framing is spent.",
   "expires_after": "2026-01-16",
+  "expiry_kind": "dated",
   "expiry_basis": "will air on Monday"
 }
 ```

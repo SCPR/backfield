@@ -81,11 +81,13 @@ def test_temporality_preset_classifies_with_expiry() -> None:
             "confidence": "high",
             "rationale": "Hinges on the Emmys airing Monday.",
             "expires_after": "2026-01-19",
+            "expiry_kind": "dated",
             "expiry_basis": "will air on Monday",
         }
     )
     assert "## Publish Date\n\n2026-01-14" in prompt
-    assert "expires_after, expiry_basis" in prompt
+    assert "expires_after, expiry_kind, expiry_basis" in prompt
+    assert meta["expiry_kind"] == "dated"
     assert meta["meta_type"] == "temporality"
     assert meta["category"] == "supersedable"
     assert meta["confidence"] == 0.9
@@ -101,7 +103,7 @@ def test_temporality_preset_classifies_with_expiry() -> None:
     ]
 
 
-def test_temporality_preset_without_expiry_records_none() -> None:
+def test_rejected_date_without_a_kind_is_unresolved() -> None:
     meta, _ = _run(
         {
             "category": "recurring-instance",
@@ -114,6 +116,56 @@ def test_temporality_preset_without_expiry_records_none() -> None:
     assert meta["category"] == "recurring_instance"
     assert meta["confidence"] == 0.3
     assert meta["expiry_rejected"] == "before-publish-date"
+    assert meta["expiry_kind"] == "unresolved"
     companion = meta["companion_blocks"][0]
-    assert companion["category"] == "none"
+    assert companion["category"] == "unresolved"
     assert companion["meta_type"] == "temporality_expiry"
+
+
+def _answer(**overrides: object) -> dict:
+    base = {
+        "category": "supersedable",
+        "confidence": "high",
+        "rationale": "Reports a pending proposal.",
+        "expires_after": None,
+        "expiry_kind": "open_ended",
+        "expiry_basis": None,
+    }
+    base.update(overrides)
+    return base
+
+
+def test_open_ended_is_stored_as_its_own_kind() -> None:
+    meta, _ = _run(_answer())
+    assert meta["expiry_kind"] == "open_ended"
+    companion = meta["companion_blocks"][0]
+    assert companion["category"] == "open_ended"
+    assert "no scheduled end" in companion["rationale"]
+
+
+def test_low_confidence_never_keeps_a_date() -> None:
+    meta, _ = _run(
+        _answer(
+            confidence="low",
+            expires_after="2026-01-19",
+            expiry_kind="dated",
+            expiry_basis="will air on Monday",
+        )
+    )
+    assert meta["expires_after"] is None
+    assert meta["expiry_kind"] == "unresolved"
+    assert meta["expiry_rejected"] == "low-confidence"
+    assert meta["companion_blocks"][0]["category"] == "unresolved"
+    assert meta["companion_blocks"][0]["rationale"] == "will air on Monday"
+
+
+def test_supersedable_cannot_be_none() -> None:
+    meta, _ = _run(_answer(expiry_kind="none"))
+    assert meta["expiry_kind"] == "unresolved"
+    assert meta["expiry_kind_adjusted"] == "supersedable-cannot-be-none"
+
+
+def test_evergreen_none_stays_none() -> None:
+    meta, _ = _run(_answer(category="evergreen", expiry_kind="none"))
+    assert meta["expiry_kind"] == "none"
+    assert meta["companion_blocks"][0]["category"] == "none"

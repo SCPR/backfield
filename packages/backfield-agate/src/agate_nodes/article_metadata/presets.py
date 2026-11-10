@@ -76,9 +76,7 @@ def normalize_custom_meta_type(raw: str | None) -> str:
     """Validate a user-defined metadata dimension key for the custom preset."""
     value = (raw or "").strip().lower().replace("-", "_").replace(" ", "_")
     if not value:
-        raise ValueError(
-            "Custom preset requires a metadata type (for example new_category)."
-        )
+        raise ValueError("Custom preset requires a metadata type (for example new_category).")
     if not _META_TYPE_PATTERN.match(value):
         raise ValueError(
             "Metadata type must start with a letter and use only lowercase letters, "
