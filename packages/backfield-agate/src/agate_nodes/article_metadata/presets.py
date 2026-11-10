@@ -36,10 +36,9 @@ PRESET_IDS: tuple[str, ...] = (
 MULTI_VALUE_PRESET_IDS: frozenset[str] = frozenset({"topic", "information_needs"})
 MAX_MULTI_VALUE_COUNT = 3
 
-# Presets whose answer also carries an expiry date (expires_after + expiry_basis). The date is
-# persisted as a companion metadata row of type "<meta_type>_expiry" (category "none" when absent).
-EXPIRY_PRESET_IDS: frozenset[str] = frozenset({"temporality"})
-EXPIRY_NONE = "none"
+# Presets whose answer carries temporality side fields (event kind, stale-after date, occasion,
+# perishable details), persisted as companion rows "<meta_type>_<field>" (see temporality.py).
+TEMPORALITY_PRESET_IDS: frozenset[str] = frozenset({"temporality"})
 
 MULTI_VALUE_LIST_KEYS: dict[str, str] = {
     "topic": "topics",
@@ -112,12 +111,8 @@ def preset_output_format_relpath(preset_id: str) -> str:
     return "prompts/_output_format.json"
 
 
-def is_expiry_preset(preset_id: str) -> bool:
-    return preset_id in EXPIRY_PRESET_IDS
-
-
-def expiry_meta_type(meta_type: str) -> str:
-    return f"{meta_type}_expiry"
+def is_temporality_preset(preset_id: str) -> bool:
+    return preset_id in TEMPORALITY_PRESET_IDS
 
 
 def is_multi_value_preset(preset_id: str) -> bool:

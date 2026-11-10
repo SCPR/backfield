@@ -18,7 +18,10 @@ const META_TYPE_LABELS: Record<string, string> = {
   information_needs: 'Critical information need',
   user_need: 'User need',
   temporality: 'Temporality',
-  temporality_expiry: 'Expires after',
+  temporality_event_kind: 'Event kind',
+  temporality_stale_after: 'Stale after',
+  temporality_occasion: 'Occasion',
+  temporality_perishable_details: 'Perishable details',
   custom: 'Custom',
 }
 

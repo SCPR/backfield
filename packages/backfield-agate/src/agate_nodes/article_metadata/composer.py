@@ -12,7 +12,7 @@ from agate_runtime.upstream_input import flatten_upstream_inputs
 from agate_nodes.article_metadata.category_labels import format_allowed_categories_enforcement
 from agate_nodes.article_metadata.presets import (
     MAX_MULTI_VALUE_COUNT,
-    is_expiry_preset,
+    is_temporality_preset,
     multi_value_list_key,
 )
 
@@ -181,22 +181,23 @@ def compose_article_metadata_prompt(
                 f"{example_shape}"
             ),
         )
-    elif is_expiry_preset(preset_id):
+    elif is_temporality_preset(preset_id):
         prompt = _append_output_instructions(
             body=body,
             categories=categories,
             output_suffix=(
-                "Return only valid JSON with exactly these keys: "
-                "category, confidence, rationale, expires_after, expiry_kind, expiry_basis.\n"
-                "- category must be one of the allowed category values listed above.\n"
+                "Return only valid JSON with exactly these keys: category, confidence, rationale, "
+                "evidence, event_kind, stale_after, stale_after_basis, perishable_details, "
+                "occasion.\n"
+                "- category must be one of the allowed category values listed above; when in "
+                "doubt between evergreen and news, news.\n"
                 "- confidence is high, medium, or low.\n"
-                "- rationale is one sentence specific to this story.\n"
-                "- expires_after is a YYYY-MM-DD date or null; null unless the story hinges on a "
-                "publication-relative moment you can resolve from the publish date.\n"
-                "- expiry_kind is dated, unresolved, open_ended, or none; dated if and only if "
-                "expires_after is a date.\n"
-                "- expiry_basis is the verbatim phrase you resolved (for unresolved, the phrase "
-                "naming the moment you could not date), or null."
+                "- evidence is a short verbatim phrase from the story.\n"
+                "- event_kind (news only) is one_off or ongoing; otherwise null.\n"
+                "- stale_after (news only) is a YYYY-MM-DD date you can resolve with confidence, "
+                "else null; stale_after_basis is the verbatim phrase, or null.\n"
+                "- perishable_details (evergreen and seasonal) is true or false; otherwise null.\n"
+                "- occasion (seasonal only) is a short name; otherwise null."
             ),
         )
     else:

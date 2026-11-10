@@ -27,26 +27,25 @@ from agate_nodes.article_metadata.composer import (
     load_package_file,
     resolve_text,
 )
-from agate_nodes.article_metadata.expiry import (
-    expiry_companion_block,
-    normalize_confidence_words,
-    normalize_expiry,
-    normalize_expiry_kind,
-    resolve_publish_date,
-)
 from agate_nodes.article_metadata.parse import (
     normalize_llm_json_payload,
     parse_article_metadata_response,
     parse_multi_value_metadata_response,
 )
 from agate_nodes.article_metadata.presets import (
-    is_expiry_preset,
     is_multi_value_preset,
+    is_temporality_preset,
     multi_value_list_key,
     normalize_prompt_preset,
     preset_output_format_relpath,
     preset_prompt_relpath,
     resolve_meta_type,
+)
+from agate_nodes.article_metadata.temporality import (
+    companion_blocks,
+    normalize_confidence_words,
+    normalize_temporality,
+    resolve_publish_date,
 )
 from agate_nodes.extraction.prompt_text import truncate_flattened_for_prompt
 
@@ -126,7 +125,7 @@ class ArticleMetadataNode:
         raw_confidence = (
             response_data.get("confidence") if isinstance(response_data, dict) else None
         )
-        if is_expiry_preset(preset_id):
+        if is_temporality_preset(preset_id):
             response_data = normalize_confidence_words(response_data)
         if is_multi_value_preset(preset_id):
             parsed_items = parse_multi_value_metadata_response(
@@ -167,28 +166,24 @@ class ArticleMetadataNode:
         }
         if preset_id == "subject":
             metadata_block["subject"] = parsed.category
-        if is_expiry_preset(preset_id) and isinstance(response_data, dict):
-            expiry = normalize_expiry_kind(
-                kind=response_data.get("expiry_kind"),
+        if is_temporality_preset(preset_id) and isinstance(response_data, dict):
+            fields = normalize_temporality(
                 category=parsed.category,
                 raw_confidence=raw_confidence,
-                expiry=normalize_expiry(
-                    response_data.get("expires_after"),
-                    response_data.get("expiry_basis"),
-                    publish_date,
-                ),
-                basis=response_data.get("expiry_basis"),
+                response=response_data,
+                publish_date=publish_date,
             )
-            metadata_block.update(expiry)
+            metadata_block["category"] = fields["category"]
+            metadata_block.update({k: v for k, v in fields.items() if k != "category"})
+            evidence = response_data.get("evidence")
+            metadata_block["evidence"] = evidence.strip() if isinstance(evidence, str) else None
             metadata_block["publish_date"] = publish_date
-            metadata_block["companion_blocks"] = [
-                expiry_companion_block(
-                    meta_type=resolved_meta_type,
-                    expiry=expiry,
-                    confidence=parsed.confidence,
-                    prompt_preset=preset_id,
-                )
-            ]
+            metadata_block["companion_blocks"] = companion_blocks(
+                meta_type=resolved_meta_type,
+                fields=fields,
+                confidence=parsed.confidence,
+                prompt_preset=preset_id,
+            )
         return metadata_block
 
     async def run(
@@ -212,7 +207,7 @@ class ArticleMetadataNode:
             custom_meta_type=params.meta_type,
         )
         publish_date = resolve_publish_date(flattened)
-        if is_expiry_preset(preset_id):
+        if is_temporality_preset(preset_id):
             prompt_flattened = {
                 **prompt_flattened,
                 "publish_date": publish_date or "Unknown",

@@ -1,11 +1,12 @@
-"""Temporality preset: publish date in the prompt, word confidences, and the expiry companion."""
+"""Temporality preset (evergreen-first): publish date in the prompt, word confidences, the
+evergreen / seasonal / news category, and the companion rows for its side fields."""
 
 from __future__ import annotations
 
 import json
 from unittest.mock import patch
 
-from agate_nodes.article_metadata.expiry import (
+from agate_nodes.article_metadata.temporality import (
     normalize_expiry,
     resolve_publish_date,
 )
@@ -46,6 +47,26 @@ def _run(answer: dict) -> tuple[dict, str]:
     return out["stylebook_output"]["article_metadata"], llm.call_args.kwargs["prompt"]
 
 
+def _answer(**overrides: object) -> dict:
+    base = {
+        "category": "news",
+        "confidence": "high",
+        "rationale": "Previews the Emmys broadcast Monday.",
+        "evidence": "will air on Monday",
+        "event_kind": "one_off",
+        "stale_after": "2026-01-19",
+        "stale_after_basis": "will air on Monday",
+        "perishable_details": None,
+        "occasion": None,
+    }
+    base.update(overrides)
+    return base
+
+
+def _companions(meta: dict) -> dict[str, str]:
+    return {b["meta_type"]: b["category"] for b in meta["companion_blocks"]}
+
+
 def test_resolve_publish_date_prefers_pub_date() -> None:
     assert (
         resolve_publish_date({"pub_date": "2026-01-14", "published": "2026-01-15T07:00:00+00:00"})
@@ -60,112 +81,71 @@ def test_resolve_publish_date_converts_utc_to_los_angeles() -> None:
     assert resolve_publish_date({}) is None
 
 
-def test_normalize_expiry_rules() -> None:
+def test_stale_date_validation() -> None:
     assert normalize_expiry(None, None, "2026-01-14")["expires_after"] is None
     assert normalize_expiry("Jan 16", "on Monday", "2026-01-14")["expiry_rejected"] == "malformed"
     before = normalize_expiry("2026-01-10", "last week", "2026-01-14")
     assert before["expires_after"] is None
     assert before["expiry_rejected"] == "before-publish-date"
-    ok = normalize_expiry("2026-01-19", " will air on Monday ", "2026-01-14")
-    assert ok == {
-        "expires_after": "2026-01-19",
-        "expiry_basis": "will air on Monday",
-        "expiry_rejected": None,
-    }
 
 
-def test_temporality_preset_classifies_with_expiry() -> None:
-    meta, prompt = _run(
-        {
-            "category": "supersedable",
-            "confidence": "high",
-            "rationale": "Hinges on the Emmys airing Monday.",
-            "expires_after": "2026-01-19",
-            "expiry_kind": "dated",
-            "expiry_basis": "will air on Monday",
-        }
-    )
+def test_news_with_a_confident_date() -> None:
+    meta, prompt = _run(_answer())
     assert "## Publish Date\n\n2026-01-14" in prompt
-    assert "expires_after, expiry_kind, expiry_basis" in prompt
-    assert meta["expiry_kind"] == "dated"
-    assert meta["meta_type"] == "temporality"
-    assert meta["category"] == "supersedable"
+    assert "evidence, event_kind, stale_after" in prompt
+    assert meta["category"] == "news"
     assert meta["confidence"] == 0.9
-    assert meta["expires_after"] == "2026-01-19"
-    assert meta["companion_blocks"] == [
-        {
-            "meta_type": "temporality_expiry",
-            "category": "2026-01-19",
-            "rationale": "will air on Monday",
-            "confidence": 0.9,
-            "prompt_preset": "temporality",
-        }
-    ]
-
-
-def test_rejected_date_without_a_kind_is_unresolved() -> None:
-    meta, _ = _run(
-        {
-            "category": "recurring-instance",
-            "confidence": "low",
-            "rationale": "Annual awards coverage.",
-            "expires_after": "2026-01-01",
-            "expiry_basis": "last year",
-        }
-    )
-    assert meta["category"] == "recurring_instance"
-    assert meta["confidence"] == 0.3
-    assert meta["expiry_rejected"] == "before-publish-date"
-    assert meta["expiry_kind"] == "unresolved"
-    companion = meta["companion_blocks"][0]
-    assert companion["category"] == "unresolved"
-    assert companion["meta_type"] == "temporality_expiry"
-
-
-def _answer(**overrides: object) -> dict:
-    base = {
-        "category": "supersedable",
-        "confidence": "high",
-        "rationale": "Reports a pending proposal.",
-        "expires_after": None,
-        "expiry_kind": "open_ended",
-        "expiry_basis": None,
+    assert meta["event_kind"] == "one_off"
+    assert meta["stale_after"] == "2026-01-19"
+    assert meta["evidence"] == "will air on Monday"
+    assert _companions(meta) == {
+        "temporality_event_kind": "one_off",
+        "temporality_stale_after": "2026-01-19",
+        "temporality_occasion": "not_applicable",
+        "temporality_perishable_details": "not_applicable",
     }
-    base.update(overrides)
-    return base
 
 
-def test_open_ended_is_stored_as_its_own_kind() -> None:
-    meta, _ = _run(_answer())
-    assert meta["expiry_kind"] == "open_ended"
-    companion = meta["companion_blocks"][0]
-    assert companion["category"] == "open_ended"
-    assert "no scheduled end" in companion["rationale"]
-
-
-def test_low_confidence_never_keeps_a_date() -> None:
+def test_low_confidence_evergreen_becomes_news_without_a_date() -> None:
     meta, _ = _run(
-        _answer(
-            confidence="low",
-            expires_after="2026-01-19",
-            expiry_kind="dated",
-            expiry_basis="will air on Monday",
-        )
+        _answer(category="evergreen", confidence="low", event_kind=None, perishable_details=False)
     )
-    assert meta["expires_after"] is None
-    assert meta["expiry_kind"] == "unresolved"
-    assert meta["expiry_rejected"] == "low-confidence"
-    assert meta["companion_blocks"][0]["category"] == "unresolved"
-    assert meta["companion_blocks"][0]["rationale"] == "will air on Monday"
+    assert meta["category"] == "news"
+    assert "low-confidence-evergreen-is-news" in meta["adjustments"]
+    assert meta["event_kind"] == "one_off"
+    assert meta["stale_after"] is None
+    assert meta["stale_after_rejected"] == "low-confidence"
 
 
-def test_supersedable_cannot_be_none() -> None:
-    meta, _ = _run(_answer(expiry_kind="none"))
-    assert meta["expiry_kind"] == "unresolved"
-    assert meta["expiry_kind_adjusted"] == "supersedable-cannot-be-none"
+def test_ongoing_news_without_a_date_stores_none() -> None:
+    meta, _ = _run(_answer(event_kind="ongoing", stale_after=None, stale_after_basis=None))
+    companions = _companions(meta)
+    assert companions["temporality_event_kind"] == "ongoing"
+    assert companions["temporality_stale_after"] == "none"
 
 
-def test_evergreen_none_stays_none() -> None:
-    meta, _ = _run(_answer(category="evergreen", expiry_kind="none"))
-    assert meta["expiry_kind"] == "none"
-    assert meta["companion_blocks"][0]["category"] == "none"
+def test_evergreen_ignores_news_fields() -> None:
+    meta, _ = _run(_answer(category="evergreen", perishable_details=False))
+    assert meta["category"] == "evergreen"
+    assert meta["event_kind"] is None
+    assert meta["stale_after"] is None
+    assert _companions(meta) == {
+        "temporality_event_kind": "not_applicable",
+        "temporality_stale_after": "not_applicable",
+        "temporality_occasion": "not_applicable",
+        "temporality_perishable_details": "no",
+    }
+
+
+def test_seasonal_keeps_occasion_and_defaults_perishable_to_review() -> None:
+    meta, _ = _run(_answer(category="seasonal", occasion="Thanksgiving", perishable_details=None))
+    assert meta["occasion"] == "Thanksgiving"
+    assert meta["perishable_details"] is True
+    assert "perishable-defaulted" in meta["adjustments"]
+    assert _companions(meta)["temporality_occasion"] == "Thanksgiving"
+
+
+def test_invalid_event_kind_defaults_to_one_off() -> None:
+    meta, _ = _run(_answer(event_kind="sometimes"))
+    assert meta["event_kind"] == "one_off"
+    assert "event-kind-defaulted" in meta["adjustments"]
