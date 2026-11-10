@@ -324,25 +324,22 @@ def _normalize_subject_item(raw: Any) -> dict[str, Any]:
 
 
 def _looks_like_metadata_item(raw: dict[str, Any]) -> bool:
-    return (
-        _coerce_category_value(
-            _get_field(
-                raw,
-                "category",
-                "categories",
-                "category_name",
-                "category_label",
-                "subject",
-                "subject_area",
-                "primary_subject",
-                "topic",
-                "need",
-                "label",
-                "name",
-            )
+    return _coerce_category_value(
+        _get_field(
+            raw,
+            "category",
+            "categories",
+            "category_name",
+            "category_label",
+            "subject",
+            "subject_area",
+            "primary_subject",
+            "topic",
+            "need",
+            "label",
+            "name",
         )
-        is not None
-    )
+    ) is not None
 
 
 def _unwrap_multi_value_items(data: Any) -> list[Any]:
@@ -429,7 +426,9 @@ def parse_article_metadata_response(
     )
     if resolved_category not in allowed:
         options = ", ".join(sorted(allowed))
-        raise ValueError(f"Category {parsed.category!r} is not allowed. Choose one of: {options}")
+        raise ValueError(
+            f"Category {parsed.category!r} is not allowed. Choose one of: {options}"
+        )
     if resolved_category != parsed.category:
         parsed = parsed.model_copy(update={"category": resolved_category})
     return parsed
