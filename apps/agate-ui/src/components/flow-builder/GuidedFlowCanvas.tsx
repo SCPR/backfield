@@ -21,6 +21,7 @@ import ReactFlow, {
   MarkerType,
   Position,
   ReactFlowProvider,
+  SelectionMode,
   useNodesState,
   useReactFlow,
   useUpdateNodeInternals,
@@ -29,6 +30,7 @@ import ReactFlow, {
   type Node,
   type NodeChange,
   type NodeDragHandler,
+  type NodeSelectionChange,
   type NodeProps,
   type NodeTypes,
   type EdgeProps,
@@ -57,7 +59,25 @@ import GuidedCompactNode, {
   GUIDED_COMPACT_NODE_WIDTH,
 } from '@/components/flow-builder/GuidedCompactNode'
 import { anchorRectFromPointerEvent, type AddNodeChooserAnchorRect } from '@/components/flow-builder/AddNodeChooser'
-import { ArrowLeftRight, GitBranch, Plus, Sparkles, Trash2 } from 'lucide-react'
+import FlowArrangeToolbar from '@/components/flow-builder/FlowArrangeToolbar'
+import {
+  alignNodes,
+  distributeNodes,
+  FLOW_SNAP_GRID_SIZE,
+  MIN_NODES_TO_ALIGN,
+  type AlignMode,
+  type DistributeAxis,
+  type NodeBox,
+  type NodePositionUpdates,
+} from '@/lib/flowAlignment'
+import { readSnapToGridPreference, writeSnapToGridPreference } from '@/lib/flowCanvasPreferences'
+import { ArrowLeftRight, GitBranch, Grid3x3, Plus, Sparkles, Trash2 } from 'lucide-react'
+
+const SNAP_GRID: [number, number] = [FLOW_SNAP_GRID_SIZE, FLOW_SNAP_GRID_SIZE]
+/** Shift (Figma) or ⌘/Ctrl (draw.io) adds to the selection, including when drawing a selection box. */
+const MULTI_SELECTION_KEYS = ['Shift', 'Meta', 'Control']
+/** Middle mouse button pans while editing; Space-drag pans via React Flow's default key. */
+const EDIT_MODE_PAN_BUTTONS = [1]
 
 type NodeBottomHoverButtonProps = {
   ariaLabel: string
@@ -242,6 +262,10 @@ function GuidedNodeShell({ NodeComponent, ...nodeProps }: GuidedNodeShellProps) 
   const handleNodeActivate = (event: ReactMouseEvent<HTMLDivElement>) => {
     if ((event.target as HTMLElement).closest('button')) return
     event.stopPropagation()
+    // Shift (Figma) or ⌘/Ctrl (draw.io) adds to the selection instead of opening settings.
+    const additive = event.shiftKey || event.metaKey || event.ctrlKey
+    callbacks.current.onNodeSelectionClick?.(nodeProps.id, additive)
+    if (additive && callbacks.current.onNodeSelectionClick) return
     callbacks.current.onNodeClick?.({
       id: nodeProps.id,
       type: nodeProps.type,
@@ -490,6 +514,48 @@ function GuidedFlowCanvasInner({
   const [exitingNodes, setExitingNodes] = useState<Map<string, Node>>(() => new Map())
   const [tidyAnimating, setTidyAnimating] = useState(false)
 
+  // Figma/draw.io-style selection and snapping are editing tools; read-only views keep drag-to-pan.
+  const selectionEnabled = allowNodeDrag && !readOnly
+  const [canvasSelectedIds, setCanvasSelectedIds] = useState<ReadonlySet<string>>(EMPTY_NODE_ID_SET)
+  const [snapToGrid, setSnapToGrid] = useState(readSnapToGridPreference)
+
+  const handleNodeSelectionClick = useCallback((nodeId: string, additive: boolean) => {
+    setCanvasSelectedIds((current) => {
+      if (!additive) return new Set([nodeId])
+      const next = new Set(current)
+      if (next.has(nodeId)) next.delete(nodeId)
+      else next.add(nodeId)
+      return next
+    })
+  }, [])
+
+  const clearCanvasSelection = useCallback(() => {
+    setCanvasSelectedIds((current) => (current.size === 0 ? current : EMPTY_NODE_ID_SET))
+  }, [])
+
+  const toggleSnapToGrid = useCallback(() => {
+    setSnapToGrid((current) => {
+      writeSnapToGridPreference(!current)
+      return !current
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!selectionEnabled) clearCanvasSelection()
+  }, [clearCanvasSelection, selectionEnabled])
+
+  useEffect(() => {
+    if (!selectionEnabled) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      const target = event.target as HTMLElement | null
+      if (target?.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]')) return
+      clearCanvasSelection()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [clearCanvasSelection, selectionEnabled])
+
   // Stable identity — see GUIDED_NODE_TYPES module-level definition above.
   const nodeTypes = GUIDED_NODE_TYPES
   const edgeTypes = GUIDED_EDGE_TYPES
@@ -502,6 +568,7 @@ function GuidedFlowCanvasInner({
   const callbacksRef = useRef<GuidedFlowCanvasCallbacks>({})
   callbacksRef.current = {
     onNodeClick,
+    onNodeSelectionClick: selectionEnabled ? handleNodeSelectionClick : undefined,
     onAddNodeClick,
     onAddEdgeClick,
     onDeleteNodeClick,
@@ -794,9 +861,10 @@ function GuidedFlowCanvasInner({
     (nodes: Node[]): Node[] =>
       nodes.map((node) => ({
         ...node,
-        selected: selectedNodeId != null && node.id === selectedNodeId,
+        selected:
+          canvasSelectedIds.has(node.id) || (selectedNodeId != null && node.id === selectedNodeId),
       })),
-    [selectedNodeId],
+    [canvasSelectedIds, selectedNodeId],
   )
 
   const prevGraphNodeIdsKeyRef = useRef(graphNodeIdsKey)
@@ -957,6 +1025,21 @@ function GuidedFlowCanvasInner({
       const filtered = changes.filter((change) => change.type !== 'remove')
       if (filtered.length === 0) return
 
+      // Selection box and pane clicks arrive as select changes; keep them in the canvas selection.
+      const selectChanges = filtered.filter(
+        (change): change is NodeSelectionChange => change.type === 'select',
+      )
+      if (selectionEnabled && selectChanges.length > 0) {
+        setCanvasSelectedIds((current) => {
+          const next = new Set(current)
+          for (const change of selectChanges) {
+            if (change.selected) next.add(change.id)
+            else next.delete(change.id)
+          }
+          return next
+        })
+      }
+
       for (const change of filtered) {
         if (change.type !== 'position') continue
         if (allowNodeDrag && change.position) {
@@ -979,7 +1062,48 @@ function GuidedFlowCanvasInner({
         onNodesChange(applicable)
       }
     },
-    [allowNodeDrag, onNodePositionChange, onNodesChange, rememberNodePosition],
+    [allowNodeDrag, onNodePositionChange, onNodesChange, rememberNodePosition, selectionEnabled],
+  )
+
+  const selectedNodeBoxes = useMemo<NodeBox[]>(
+    () =>
+      nodes
+        .filter((node) => node.selected)
+        .map((node) => ({
+          id: node.id,
+          x: node.position.x,
+          y: node.position.y,
+          width: node.width ?? GUIDED_COMPACT_NODE_WIDTH,
+          height: node.height ?? GUIDED_COMPACT_NODE_HEIGHT,
+        })),
+    [nodes],
+  )
+
+  const applyArrangement = useCallback(
+    (updates: NodePositionUpdates) => {
+      if (updates.size === 0) return
+      setNodes((current) =>
+        current.map((node) => {
+          const position = updates.get(node.id)
+          return position ? { ...node, position, positionAbsolute: position } : node
+        }),
+      )
+      for (const [nodeId, position] of updates) {
+        rememberNodePosition(nodeId, position)
+        onNodePositionChange?.(nodeId, position)
+      }
+    },
+    [onNodePositionChange, rememberNodePosition, setNodes],
+  )
+
+  const handleAlign = useCallback(
+    (mode: AlignMode) => applyArrangement(alignNodes(selectedNodeBoxes, mode)),
+    [applyArrangement, selectedNodeBoxes],
+  )
+
+  const handleDistribute = useCallback(
+    (axis: DistributeAxis) => applyArrangement(distributeNodes(selectedNodeBoxes, axis)),
+    [applyArrangement, selectedNodeBoxes],
   )
 
   const onNodeDragStart = useCallback(() => {
@@ -1064,21 +1188,55 @@ function GuidedFlowCanvasInner({
                   }
                 : undefined
             }
+            onPaneClick={selectionEnabled ? clearCanvasSelection : undefined}
             maxZoom={1.2}
             translateExtent={panExtent}
             nodesDraggable={allowNodeDrag}
             nodesConnectable={false}
-            elementsSelectable={false}
+            elementsSelectable={selectionEnabled}
             selectNodesOnDrag={false}
-            panOnDrag
-            zoomOnScroll
+            snapToGrid={selectionEnabled && snapToGrid}
+            snapGrid={SNAP_GRID}
+            // Editing follows Figma/draw.io: drag the empty canvas to draw a selection box,
+            // scroll to pan, pinch or ⌘/Ctrl-scroll to zoom, Space-drag or middle-drag to pan.
+            selectionOnDrag={selectionEnabled}
+            selectionMode={SelectionMode.Partial}
+            multiSelectionKeyCode={MULTI_SELECTION_KEYS}
+            panOnDrag={selectionEnabled ? EDIT_MODE_PAN_BUTTONS : true}
+            panOnScroll={selectionEnabled}
+            zoomOnScroll={!selectionEnabled}
+            zoomOnPinch
             proOptions={{ hideAttribution: true }}
           >
-            <Background variant={BackgroundVariant.Dots} />
+            <Background variant={BackgroundVariant.Dots} gap={FLOW_SNAP_GRID_SIZE} />
             <Controls showInteractive={false} />
           </ReactFlow>
         </Suspense>
       </GuidedFlowCanvasUiContext.Provider>
+      {selectionEnabled && selectedNodeBoxes.length >= MIN_NODES_TO_ALIGN ? (
+        <FlowArrangeToolbar
+          selectedCount={selectedNodeBoxes.length}
+          onAlign={handleAlign}
+          onDistribute={handleDistribute}
+        />
+      ) : null}
+      {selectionEnabled ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className={cn(
+            'absolute bottom-40 left-3 z-20 h-9 w-9 bg-white shadow-sm',
+            snapToGrid && 'border-primary/40 bg-primary/10 text-primary',
+          )}
+          onClick={toggleSnapToGrid}
+          aria-pressed={snapToGrid}
+          aria-label="Snap to grid"
+          title={snapToGrid ? 'Snap to grid: on' : 'Snap to grid: off'}
+        >
+          <Grid3x3 className="h-4 w-4" />
+        </Button>
+      ) : null}
       {!readOnly && scaffoldModel != null && onTidyLayout ? (
         <Button
           type="button"

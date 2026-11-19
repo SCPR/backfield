@@ -10,6 +10,8 @@ import type { AddNodeChooserAnchorRect } from '@/components/flow-builder/AddNode
  */
 export type GuidedFlowCanvasCallbacks = {
   onNodeClick?: (node: Node) => void
+  /** Canvas selection: `additive` (Shift, ⌘ or Ctrl held) toggles; otherwise selects only this node. */
+  onNodeSelectionClick?: (nodeId: string, additive: boolean) => void
   onAddNodeClick?: (parentNodeId: string, anchorRect: AddNodeChooserAnchorRect) => void
   onAddEdgeClick?: (sourceNodeId: string, targetNodeId: string, anchorRect: AddNodeChooserAnchorRect) => void
   onDeleteNodeClick?: (nodeId: string) => void
