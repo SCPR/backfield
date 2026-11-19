@@ -68,6 +68,10 @@ Boundaries and runtime behavior:
 - [`architecture/knowledge-graph.md`](architecture/knowledge-graph.md) — connection evidence, natures, reinforce writer (Phase A shipped)
 - [`architecture/connection-natures.md`](architecture/connection-natures.md) — preferred nature catalog (TAC KBP / FollowTheMoney backbone)
 
+## Active plans
+
+- [`plan/content-type.md`](plan/content-type.md) — `content_type` on content items (`article`, `show_segment`)
+
 ## Deferred product plans
 
 Intent and decision records for features not currently scheduled:
