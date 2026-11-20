@@ -1,6 +1,7 @@
 # Content type for content items
 
-**Status:** Planned. Implementation branch: `feat/content-type`.
+**Status:** Implemented on branch `feat/content-type`. Kept as the decision record until
+merged.
 
 Add a `content_type` field to content items (`substrate_article`) so Backfield can tell
 different kinds of content apart, and so users can filter and label by kind. The first new kind is
@@ -100,8 +101,9 @@ Rejected alternatives:
   - add `content_type` (a tuple of `ContentType`) to the article and mention filter params
     and to the shared article filter. An empty tuple means no filter. Otherwise the shared
     filter applies `content_type IN (…)`
-  - semantic and passage search (`article_semantic_search.py`) use the same filter, so the
-    filter reaches them without extra code. Add tests to confirm it
+  - semantic, passage and geo search call the shared filter but don't accept
+    `external_source` today, so they don't take `content_type` either. With separate
+    projects they don't need it. Add it there when a project mixes kinds
   - add `content_types` to `article_facets.py`
   - include `content_type` in the article response builder
 - `apps/core-api/src/core_api/routers/public`: add the optional, repeatable `content_type`
@@ -132,7 +134,6 @@ AGENTS.md requires this for any `/public/v1` change; regenerating OpenAPI isn't 
   - the default on create
   - overwrite on update, without `content_changed`
   - the shared filter, applied through article, mention and entity routes
-  - the filter in semantic and passage search
   - an omitted filter returning every kind, and repeated values returning both kinds
   - facets returning both values
 - Migration: run `make migrate` on a local database with existing articles. Confirm every row

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from backfield_db import SubstrateArticle
+from backfield_db import ContentType, SubstrateArticle
 from sqlmodel import Session, col, select
 
 from backfield_entities.public.article_geo_search import group_and_page_articles_by_mention_pairs
@@ -31,6 +31,7 @@ def collect_mention_article_pairs(
     meta_clauses: tuple[ArticleMetaClause, ...] = (),
     author: str | None = None,
     external_source: str | None = None,
+    content_type: tuple[ContentType, ...] = (),
     pub_date_from: date | None = None,
     pub_date_to: date | None = None,
 ) -> list[tuple[int, int]]:
@@ -57,6 +58,7 @@ def collect_mention_article_pairs(
         meta_clauses=meta_clauses,
         author=author,
         external_source=external_source,
+        content_type=content_type,
         has_mentions=None,
         pub_date_from=pub_date_from,
         pub_date_to=pub_date_to,

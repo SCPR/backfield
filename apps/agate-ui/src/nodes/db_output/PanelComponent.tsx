@@ -36,6 +36,7 @@ const nodeMetadata = {
     "stylebook_matching_enabled": true,
     "canonicalization_mode": "ai_assisted",
     "reconciliation_policy": "smart_merge",
+    "content_type": "article",
     "auto_apply_canonicalization": true,
     "adjudication_model": "",
     "adjudication_ai_model_config_id": null,
@@ -92,6 +93,7 @@ const DEFAULTS = {
   stylebook_matching_enabled: true,
   canonicalization_mode: 'ai_assisted' as 'rules' | 'ai_assisted',
   reconciliation_policy: 'smart_merge' as 'add_only' | 'smart_merge' | 'replace',
+  content_type: 'article' as 'article' | 'show_segment',
   auto_apply_canonicalization: true,
   adjudication_model: '',
   adjudication_ai_model_config_id: null as string | null,
@@ -388,6 +390,30 @@ export default function DBOutputPanel({
     <>
       <NodePanelTabGate tab="settings">
         <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="dbout-content-type">Content type</Label>
+            <Select
+              value={data.content_type}
+              onValueChange={(value) =>
+                patch({ content_type: value as 'article' | 'show_segment' })
+              }
+              disabled={disabled}
+            >
+              <SelectTrigger id="dbout-content-type" className="text-xs">
+                <SelectValue placeholder="Choose what kind of content this flow saves" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="article">Article</SelectItem>
+                <SelectItem value="show_segment">Show segment</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {data.content_type === 'show_segment'
+                ? 'Saves each item as one segment of a radio, TV, or podcast show.'
+                : 'Saves each item as a news story.'}
+            </p>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="dbout-reconciliation">Update strategy</Label>
             <Select

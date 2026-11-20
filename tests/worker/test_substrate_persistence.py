@@ -8,6 +8,7 @@ from backfield_db import (
     BackfieldOrganization,
     BackfieldProject,
     BackfieldWorkspace,
+    ContentType,
     StylebookLocationAlias,
     StylebookLocationCanonical,
     SubstrateArticle,
@@ -279,6 +280,73 @@ def test_upsert_article_reuses_existing_row_by_publication_and_entry_id() -> Non
         assert row.headline == "Updated headline"
         assert row.text == "Updated body"
         assert row.source_run_id == "run-a2"
+
+
+def test_upsert_article_sets_content_type_and_reprocessing_overwrites_it() -> None:
+    engine = create_engine("sqlite://", echo=False)
+    SQLModel.metadata.create_all(engine)
+    consolidated = {
+        "url": "https://example.com/segment#segment-B",
+        "publication": "AirTalk",
+        "entry_id": "drive-file-1:B",
+        "headline": "Hospice fraud in LA",
+        "text": "Segment body",
+    }
+
+    with Session(engine) as session:
+        project_id = _bootstrap_project(session, org_slug="org-ct", project_slug="proj-ct")
+        session.add(AgateRun(id="run-ct", graph_id="graph-ct", status="pending"))
+        session.commit()
+
+        default = _upsert_article(
+            session, project_id=project_id, consolidated=consolidated, run_id="run-ct"
+        )
+        assert default.created
+        assert default.article.content_type == ContentType.ARTICLE
+
+        relabeled = _upsert_article(
+            session,
+            project_id=project_id,
+            consolidated=consolidated,
+            run_id="run-ct",
+            content_type=ContentType.SHOW_SEGMENT,
+        )
+        assert not relabeled.created
+        assert relabeled.article.id == default.article.id
+        assert relabeled.article.content_type == ContentType.SHOW_SEGMENT
+        # A new kind alone is not a content change, so it must not trigger re-embedding.
+        assert not relabeled.content_changed
+
+
+def test_persist_from_consolidated_uses_db_output_content_type() -> None:
+    engine = create_engine("sqlite://", echo=False)
+    SQLModel.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        project_id = _bootstrap_project(
+            session, org_slug="org-ct-persist", project_slug="proj-ct-persist"
+        )
+        session.add(AgateRun(id="run-ct-persist", graph_id="graph-ct", status="pending"))
+        session.commit()
+
+        result = persist_from_consolidated(
+            session,
+            project_id=project_id,
+            graph_id="graph-ct",
+            run_id="run-ct-persist",
+            consolidated={
+                "url": "https://example.com/segment-persist#segment-A",
+                "publication": "AirTalk",
+                "entry_id": "drive-file-2:A",
+                "headline": "Chiquita Canyon",
+                "text": "Segment body",
+            },
+            db_output_params={"content_type": "show_segment"},
+        )
+        session.commit()
+        row = session.get(SubstrateArticle, result.article_id)
+        assert row is not None
+        assert row.content_type == ContentType.SHOW_SEGMENT
 
 
 def _utc(value: datetime | None) -> datetime | None:

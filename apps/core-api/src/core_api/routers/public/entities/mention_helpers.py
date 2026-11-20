@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Literal
 
+from backfield_db import ContentType
 from backfield_entities.public.articles import ArticleMetaClause
 from backfield_entities.public.mention_filters import PublicEntityMentionListParams
 from backfield_entities.public.mention_timeline import PublicEntityMentionTimelineParams
@@ -15,6 +16,7 @@ def build_entity_mention_list_params(
     natures: tuple[str, ...],
     author: str | None,
     external_source: str | None,
+    content_type: tuple[ContentType, ...] = (),
     section: str | None,
     meta_type: str | None,
     meta_category: str | None,
@@ -40,6 +42,7 @@ def build_entity_mention_list_params(
         natures=natures,
         author=author,
         external_source=external_source,
+        content_type=content_type,
         meta_type=resolved_meta_type,
         meta_category=resolved_meta_category,
         exclude_meta_type=exclude_meta_type,

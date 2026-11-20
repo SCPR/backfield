@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Literal
 
+from backfield_db import ContentType
+
 from backfield_entities.public.articles import ArticleMetaClause, _apply_public_article_list_filters
 from backfield_entities.public.mention_evidence import maybe_quotes_only_mention_filters
 from backfield_entities.public.nature_filters import normalize_natures
@@ -16,6 +18,7 @@ class PublicEntityMentionListParams:
     natures: tuple[str, ...] = ()
     author: str | None = None
     external_source: str | None = None
+    content_type: tuple[ContentType, ...] = ()
     meta_type: str | None = None
     meta_category: str | None = None
     exclude_meta_type: str | None = None
@@ -49,6 +52,7 @@ def apply_entity_mention_list_filters(
         meta_clauses=params.meta_clauses,
         author=params.author,
         external_source=params.external_source,
+        content_type=params.content_type,
         has_mentions=None,
         pub_date_from=params.pub_date_from,
         pub_date_to=params.pub_date_to,

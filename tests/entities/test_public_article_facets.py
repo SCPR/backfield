@@ -71,6 +71,7 @@ def test_get_public_article_facets_returns_distinct_values() -> None:
 
     assert facets.authors == ["Jane Doe"]
     assert facets.external_sources == ["Daily Herald"]
+    assert facets.content_types == ["article"]
     assert facets.topic_categories == ["local_government_politics"]
     assert facets.format_categories == ["news_story"]
     assert facets.subject_categories == []

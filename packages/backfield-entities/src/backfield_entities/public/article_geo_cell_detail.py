@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
-from backfield_db import SubstrateArticle, SubstrateLocation, SubstrateLocationMention
+from backfield_db import ContentType, SubstrateArticle, SubstrateLocation, SubstrateLocationMention
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlmodel import Session, col, select
@@ -35,6 +35,7 @@ class PublicArticleGeoMentionFilters:
     exclude_meta_category: str | None = None
     meta_clauses: tuple[ArticleMetaClause, ...] = ()
     external_source: str | None = None
+    content_type: tuple[ContentType, ...] = ()
     pub_date_from: date | None = None
     pub_date_to: date | None = None
 
@@ -141,6 +142,7 @@ def filter_allowed_article_ids(
         exclude_meta_category=filters.exclude_meta_category,
         meta_clauses=filters.meta_clauses,
         external_source=filters.external_source,
+        content_type=filters.content_type,
         pub_date_from=filters.pub_date_from,
         pub_date_to=filters.pub_date_to,
     )

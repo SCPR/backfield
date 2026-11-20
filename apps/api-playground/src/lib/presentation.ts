@@ -70,6 +70,11 @@ const BOOLEAN_OPTIONS: SelectOption[] = [
   { value: "false", label: "False" },
 ]
 
+const CONTENT_TYPE_OPTIONS: SelectOption[] = [
+  { value: "article", label: "Article" },
+  { value: "show_segment", label: "Show segment" },
+]
+
 const DIRECTION_OPTIONS: SelectOption[] = [
   { value: "asc", label: "Ascending" },
   { value: "desc", label: "Descending" },
@@ -201,6 +206,12 @@ function helperTextForField(
       "key:op:value with eq, neq, ieq, ineq, lt, lte, gt, or gte. " +
       "OR values with | on eq/ieq (party:eq:Democrat|Independent). " +
       "Multiple clauses AND together. Distinct from article meta=."
+    )
+  }
+  if (name === "content_type") {
+    return (
+      "Leave empty to include every kind. external_source is the outlet or show; " +
+      "content_type is what the item is."
     )
   }
   if (name === "include") {
@@ -340,6 +351,17 @@ export function presentationForField(
         mentionFacetKey,
         name.replace(/_/g, " "),
       ),
+    }
+  }
+
+  if (name === "content_type") {
+    return {
+      control: "checkboxes",
+      emptyLabel: "Every kind",
+      helperText: helperTextForField(operation, name, location),
+      options: CONTENT_TYPE_OPTIONS,
+      typeLabel: "Repeatable string",
+      wide: true,
     }
   }
 

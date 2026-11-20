@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Literal
 
+from backfield_db import ContentType
 from backfield_entities.public.article_geo_search import (
     PublicArticleGeoSearchItemOut,
     PublicGeoBboxOut,
@@ -23,6 +24,7 @@ class PublicArticleSearchOut(BaseModel):
     q: str | None = None
     author: str | None = None
     external_source: str | None = None
+    content_type: list[ContentType] = Field(default_factory=list)
     has_mentions: str | None = None
     pub_date_from: date | None = None
     pub_date_to: date | None = None

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from backfield_db import BackfieldProject
+from backfield_db import BackfieldProject, ContentType
 from backfield_entities.public.articles import PublicArticleOut
 from backfield_entities.public.locations import get_public_location, list_public_location_articles
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -11,6 +11,7 @@ from sqlmodel import Session
 
 from core_api.deps import get_session
 from core_api.routers.public.articles.helpers import (
+    CONTENT_TYPE_PARAM_DESCRIPTION,
     INCLUDE_PARAM_DESCRIPTION,
     META_PARAM_DESCRIPTION,
     NATURE_PARAM_DESCRIPTION,
@@ -51,6 +52,10 @@ def list_project_location_articles(
         None,
         description="Filter by publication/outlet name (case-insensitive exact match)",
     ),
+    content_type: list[ContentType] = Query(
+        default=[],
+        description=CONTENT_TYPE_PARAM_DESCRIPTION,
+    ),
     meta: list[str] = Query(default=[], description=META_PARAM_DESCRIPTION),
     include: list[str] = Query(default=[], description=INCLUDE_PARAM_DESCRIPTION),
     pub_date_from: str | None = Query(None),
@@ -72,6 +77,7 @@ def list_project_location_articles(
         meta_clauses=parse_meta_clauses(meta),
         author=author,
         external_source=external_source,
+        content_type=tuple(content_type),
         pub_date_from=parse_optional_date(pub_date_from, param_name="pub_date_from"),
         pub_date_to=parse_optional_date(pub_date_to, param_name="pub_date_to"),
         limit=limit,

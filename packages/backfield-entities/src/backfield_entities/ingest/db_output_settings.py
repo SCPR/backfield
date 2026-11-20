@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from backfield_db import BackfieldProject
+from backfield_db import DEFAULT_CONTENT_TYPE, BackfieldProject, ContentType
 from pydantic import BaseModel, Field, model_validator
 from sqlmodel import Session
 
@@ -31,6 +31,10 @@ class DbOutputCanonicalSettings(BaseModel):
         description="How Backfield Output reconciles saved data in domains produced by this flow.",
     )
     auto_apply_canonicalization: bool = True
+    content_type: ContentType = Field(
+        default=DEFAULT_CONTENT_TYPE,
+        description="Kind of content this flow saves (article or show segment).",
+    )
     adjudication_model: str = Field(
         default="gpt-5-nano",
         description="Provider model id for AI-assisted adjudication (legacy default when unset).",
@@ -76,6 +80,9 @@ class DbOutputCanonicalSettings(BaseModel):
         cm = out.get("connections_model")
         if isinstance(cm, str) and cm.strip() == "":
             out.pop("connections_model", None)
+        ct = out.get("content_type")
+        if ct is None or (isinstance(ct, str) and ct.strip() == ""):
+            out.pop("content_type", None)
         return out
 
     @classmethod

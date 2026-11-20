@@ -379,6 +379,11 @@ export default function EndpointExplorer({
           const value = values[`query:${name}`]?.trim()
           if (value) batchBody[name] = value
         }
+        const contentTypes = (values["query:content_type"] ?? "")
+          .split(/[\n,]/)
+          .map((item) => item.trim())
+          .filter(Boolean)
+        if (contentTypes.length) batchBody.content_type = contentTypes
         const meta = values["query:meta"]?.trim()
         if (meta) {
           batchBody.meta = meta

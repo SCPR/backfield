@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from backfield_db import BackfieldProject
+from backfield_db import BackfieldProject, ContentType
 from backfield_entities.public.article_hub import PublicEntityMentionType
 from backfield_entities.public.articles import ArticleMetaClause
 from backfield_entities.public.mentions import PublicMentionSearchParams
@@ -22,6 +22,7 @@ def build_mention_search_params(
     has_canonical: bool | None,
     author: str | None,
     external_source: str | None,
+    content_type: tuple[ContentType, ...] = (),
     section: str | None,
     meta_type: str | None,
     meta_category: str | None,
@@ -45,6 +46,7 @@ def build_mention_search_params(
         has_canonical=has_canonical,
         author=author,
         external_source=external_source,
+        content_type=content_type,
         section=section,
         meta_type=meta_type,
         meta_category=meta_category,

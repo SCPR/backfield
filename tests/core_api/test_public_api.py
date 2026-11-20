@@ -15,6 +15,7 @@ from backfield_db import (
     BackfieldOrganization,
     BackfieldProject,
     BackfieldWorkspace,
+    ContentType,
     Stylebook,
     StylebookConnection,
     StylebookLocationCanonical,
@@ -511,6 +512,108 @@ def test_public_article_search(public_client: TestClient) -> None:
     assert body["pagination"]["total"] == 2
     headlines = {item["headline"] for item in body["items"]}
     assert "City council votes on budget" in headlines
+
+
+def _add_show_segment_with_person(engine) -> str:
+    """Add one show segment and one person mentioned in it and in an existing article."""
+    with Session(engine) as session:
+        general = session.exec(
+            select(BackfieldProject).where(BackfieldProject.slug == "general")
+        ).one()
+        existing_article = session.exec(
+            select(SubstrateArticle).where(
+                SubstrateArticle.headline == "City council votes on budget"
+            )
+        ).one()
+        segment = SubstrateArticle(
+            project_id=int(general.id),
+            headline="Hospice fraud in LA",
+            url="https://drive.google.com/file/d/abc/view#segment-B",
+            external_source="AirTalk",
+            content_type=ContentType.SHOW_SEGMENT.value,
+            pub_date=date(2026, 11, 18),
+            text="How families can avoid hospice fraud.",
+        )
+        canonical = StylebookPersonCanonical(
+            stylebook_id=int(general.stylebook_id),
+            label="Aaron Schrank",
+            slug="aaron-schrank",
+        )
+        session.add(segment)
+        session.add(canonical)
+        session.flush()
+        person = SubstratePerson(
+            project_id=int(general.id),
+            name="Aaron Schrank",
+            normalized_name="aaron schrank",
+            stylebook_person_canonical_id=str(canonical.id),
+        )
+        session.add(person)
+        session.flush()
+        for article_id in (int(segment.id), int(existing_article.id)):
+            session.add(
+                SubstratePersonMention(
+                    article_id=article_id,
+                    person_id=int(person.id),
+                    nature="source",
+                )
+            )
+        session.commit()
+        return str(canonical.id)
+
+
+def test_public_article_search_filters_by_content_type(public_client: TestClient) -> None:
+    _add_show_segment_with_person(public_client.test_engine)  # type: ignore[attr-defined]
+    raw_key = _create_project_api_key(public_client)
+    headers = {"Authorization": f"Bearer {raw_key}"}
+    url = "/public/v1/projects/general/articles/search"
+
+    every_kind = public_client.get(url, headers=headers)
+    assert every_kind.status_code == 200
+    assert every_kind.json()["pagination"]["total"] == 3
+    assert every_kind.json()["content_type"] == []
+    kinds = {item["headline"]: item["content_type"] for item in every_kind.json()["items"]}
+    assert kinds["Hospice fraud in LA"] == "show_segment"
+    assert kinds["City council votes on budget"] == "article"
+
+    segments = public_client.get(url, headers=headers, params={"content_type": "show_segment"})
+    assert segments.status_code == 200
+    assert [item["headline"] for item in segments.json()["items"]] == ["Hospice fraud in LA"]
+    assert segments.json()["content_type"] == ["show_segment"]
+
+    articles = public_client.get(url, headers=headers, params={"content_type": "article"})
+    assert articles.json()["pagination"]["total"] == 2
+
+    both = public_client.get(
+        url, headers=headers, params=[("content_type", "article"), ("content_type", "show_segment")]
+    )
+    assert both.json()["pagination"]["total"] == 3
+
+    unknown = public_client.get(url, headers=headers, params={"content_type": "podcast"})
+    assert unknown.status_code == 422
+    assert unknown.json()["error"]["code"] == "validation_error"
+
+
+def test_public_person_routes_filter_by_content_type(public_client: TestClient) -> None:
+    person_id = _add_show_segment_with_person(public_client.test_engine)  # type: ignore[attr-defined]
+    raw_key = _create_project_api_key(public_client)
+    headers = {"Authorization": f"Bearer {raw_key}"}
+
+    articles_url = f"/public/v1/projects/general/people/{person_id}/articles"
+    every_kind = public_client.get(articles_url, headers=headers)
+    assert every_kind.status_code == 200, every_kind.text
+    assert every_kind.json()["pagination"]["total"] == 2
+    segments = public_client.get(
+        articles_url, headers=headers, params={"content_type": "show_segment"}
+    )
+    assert [item["headline"] for item in segments.json()["items"]] == ["Hospice fraud in LA"]
+
+    mentions_url = f"/public/v1/projects/general/people/{person_id}/mentions"
+    mentions = public_client.get(
+        mentions_url, headers=headers, params={"content_type": "article"}
+    )
+    assert mentions.status_code == 200, mentions.text
+    assert mentions.json()["pagination"]["total"] == 1
 
 
 def test_public_key_sees_shared_canonical_but_not_sibling_project_evidence(

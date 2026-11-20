@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from backfield_db import BackfieldProject
+from backfield_db import BackfieldProject, ContentType
 from backfield_entities.public.article_geo_cells_batch import (
     PublicArticleGeoCellsBatchItemOut,
     PublicArticleGeoCellsBatchParams,
@@ -17,6 +17,7 @@ from sqlmodel import Session
 
 from core_api.deps import get_session
 from core_api.routers.public.articles.helpers import (
+    CONTENT_TYPE_PARAM_DESCRIPTION,
     META_PARAM_DESCRIPTION,
     NATURE_PARAM_DESCRIPTION,
     parse_meta_clauses,
@@ -44,6 +45,10 @@ class PublicArticleGeoCellsBatchIn(BaseModel):
     external_source: str | None = Field(
         default=None,
         description="Include articles from this external source (case-insensitive)",
+    )
+    content_type: list[ContentType] = Field(
+        default_factory=list,
+        description=CONTENT_TYPE_PARAM_DESCRIPTION,
     )
     pub_date_from: str | None = None
     pub_date_to: str | None = None
@@ -73,6 +78,7 @@ def query_project_articles_in_geo_cells(
         natures=natures,
         meta_clauses=parse_meta_clauses(body.meta),
         external_source=body.external_source,
+        content_type=tuple(body.content_type),
         pub_date_from=parse_optional_date(body.pub_date_from, param_name="pub_date_from"),
         pub_date_to=parse_optional_date(body.pub_date_to, param_name="pub_date_to"),
         limit=body.limit,

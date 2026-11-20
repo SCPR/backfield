@@ -30,6 +30,8 @@ from sqlalchemy import (
 from sqlalchemy.types import TypeDecorator
 from sqlmodel import Field, SQLModel
 
+from backfield_db.content_type import DEFAULT_CONTENT_TYPE
+
 
 def _uuid() -> str:
     return str(uuid4())
@@ -1598,6 +1600,7 @@ class SubstrateArticle(SQLModel, table=True):
         Index("idx_substrate_article_project_published", "project_id", "published"),
         Index("idx_substrate_article_project_updated", "project_id", "updated"),
         Index("idx_substrate_article_project_entry_id", "project_id", "entry_id"),
+        Index("idx_substrate_article_project_content_type", "project_id", "content_type"),
     )
 
     id: int | None = Field(default=None, primary_key=True)
@@ -1614,6 +1617,11 @@ class SubstrateArticle(SQLModel, table=True):
     s3_bucket: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
     s3_key: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
     text: str = Field(sa_column=Column(Text, nullable=False))
+    # A ``ContentType`` value; ``external_source`` is the outlet, this is the kind of content.
+    content_type: str = Field(
+        default=DEFAULT_CONTENT_TYPE.value,
+        sa_column=Column(Text, nullable=False, server_default=DEFAULT_CONTENT_TYPE.value),
+    )
     source_run_id: str | None = Field(default=None, foreign_key="agate_run.id", index=True)
     source_item_id: int | None = Field(default=None)
     added: bool = Field(default=False, index=True)

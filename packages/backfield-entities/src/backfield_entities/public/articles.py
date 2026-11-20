@@ -8,6 +8,7 @@ from enum import StrEnum
 from typing import Annotated
 
 from backfield_db import (
+    ContentType,
     SubstrateArticle,
     SubstrateArticleEmbedding,
     SubstrateArticleMeta,
@@ -83,6 +84,7 @@ class PublicArticleOut(BaseModel):
     published: PublicUtcTimestamp = None
     updated: PublicUtcTimestamp = None
     source: PublicArticleSourceOut | None = None
+    content_type: ContentType = ContentType.ARTICLE
     preview: str | None = None
     metadata: list[PublicArticleMetaOut] = Field(default_factory=list)
     embedded: bool | None = None
@@ -123,6 +125,7 @@ class PublicArticleSearchParams:
     meta_clauses: tuple[ArticleMetaClause, ...] = ()
     author: str | None = None
     external_source: str | None = None
+    content_type: tuple[ContentType, ...] = ()
     has_mentions: str | None = None
     pub_date_from: date | None = None
     pub_date_to: date | None = None
@@ -142,6 +145,7 @@ class PublicArticleSearchQueryOut(BaseModel):
     exclude_meta_category: str | None = None
     author: str | None = None
     external_source: str | None = None
+    content_type: list[ContentType] = Field(default_factory=list)
     has_mentions: str | None = None
     pub_date_from: date | None = None
     pub_date_to: date | None = None
@@ -165,6 +169,7 @@ def public_article_search_query_out(
         exclude_meta_category=params.exclude_meta_category,
         author=(params.author or "").strip() or None,
         external_source=(params.external_source or "").strip() or None,
+        content_type=list(params.content_type),
         has_mentions=(params.has_mentions or "").strip() or None,
         pub_date_from=params.pub_date_from,
         pub_date_to=params.pub_date_to,
@@ -265,6 +270,7 @@ def _article_to_public_out(
         published=article.published,
         updated=article.updated,
         source=source,
+        content_type=ContentType(article.content_type),
         preview=preview,
         metadata=metadata,
     )
@@ -359,6 +365,7 @@ def _apply_public_article_list_filters(
     meta_clauses: tuple[ArticleMetaClause, ...] = (),
     author: str | None = None,
     external_source: str | None = None,
+    content_type: tuple[ContentType, ...] = (),
     has_mentions: str | None = None,
     pub_date_from: date | None,
     pub_date_to: date | None,
@@ -376,6 +383,12 @@ def _apply_public_article_list_filters(
     if external_source_value:
         stmt = stmt.where(
             func.lower(SubstrateArticle.external_source) == external_source_value.lower()
+        )
+
+    # No content types means every kind; projects, not a default filter, keep kinds apart.
+    if content_type:
+        stmt = stmt.where(
+            col(SubstrateArticle.content_type).in_([kind.value for kind in content_type])
         )
 
     has_mentions_value = (has_mentions or "").strip().lower()
@@ -458,6 +471,7 @@ def search_public_articles(
         meta_clauses=params.meta_clauses,
         author=params.author,
         external_source=params.external_source,
+        content_type=params.content_type,
         has_mentions=params.has_mentions,
         pub_date_from=params.pub_date_from,
         pub_date_to=params.pub_date_to,

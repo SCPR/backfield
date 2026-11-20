@@ -151,6 +151,18 @@ Filter `external_source=Chicago Sun-Times` therefore includes S3-era rows after 
 articles are persisted or repaired. The former pipeline value `backfield_s3_ingestion`
 is not written for new articles.
 
+`content_type` is what an item is, independent of its outlet: `article` (a news story) or
+`show_segment` (one segment of a radio, TV, or podcast show). For example, an AirTalk
+segment has `external_source=AirTalk` and `content_type=show_segment`. Every item
+returned by article search, canonical article lists, and mention search carries
+`content_type`, and article facets list the `content_types` present in the project.
+Article keyword search, the geo-cell batch query, mention search, and canonical
+person, organization, and location article and mention lists accept a repeatable
+`content_type` filter (OR), e.g. `content_type=article&content_type=show_segment`.
+Omitting it returns every kind; unknown values are rejected with `422`. Separate projects,
+not a default filter, keep different teams' content apart. Semantic and geographic
+search don't accept `content_type` yet.
+
 Article keyword, semantic, and geographic search, plus canonical person,
 organization, and location article-list endpoints, accept repeatable
 `include=counts` (mention and entity totals, image count, custom records, and

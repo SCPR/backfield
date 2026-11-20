@@ -12,6 +12,7 @@ from backfield_entities.public.article_metadata import distinct_meta_categories
 class PublicArticleFacetsOut(BaseModel):
     authors: list[str]
     external_sources: list[str]
+    content_types: list[str]
     format_categories: list[str]
     topic_categories: list[str]
     subject_categories: list[str]
@@ -49,6 +50,11 @@ def get_public_article_facets(session: Session, *, project_id: int) -> PublicArt
             session,
             project_id=project_id,
             column=SubstrateArticle.external_source,
+        ),
+        content_types=_distinct_article_field(
+            session,
+            project_id=project_id,
+            column=SubstrateArticle.content_type,
         ),
         format_categories=distinct_meta_categories(
             session,

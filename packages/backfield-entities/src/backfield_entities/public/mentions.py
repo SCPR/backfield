@@ -6,6 +6,7 @@ from dataclasses import dataclass, replace
 from datetime import date
 
 from backfield_db import (
+    ContentType,
     StylebookLocationCanonical,
     StylebookOrganizationCanonical,
     StylebookPersonCanonical,
@@ -58,6 +59,7 @@ class PublicMentionArticleOut(BaseModel):
     pub_date: date | None = None
     published: PublicUtcTimestamp = None
     updated: PublicUtcTimestamp = None
+    content_type: ContentType = ContentType.ARTICLE
 
 
 class PublicMentionSearchItemOut(BaseModel):
@@ -110,6 +112,7 @@ class PublicMentionSearchParams:
     has_canonical: bool | None = None
     author: str | None = None
     external_source: str | None = None
+    content_type: tuple[ContentType, ...] = ()
     section: str | None = None
     meta_type: str | None = None
     meta_category: str | None = None
@@ -150,6 +153,7 @@ def _article_article_out(article: SubstrateArticle) -> PublicMentionArticleOut:
         pub_date=article.pub_date,
         published=article.published,
         updated=article.updated,
+        content_type=ContentType(article.content_type),
     )
 
 
@@ -182,6 +186,7 @@ def _apply_article_filters_to_mention_arm(stmt, params: PublicMentionSearchParam
         meta_clauses=params.meta_clauses,
         author=params.author,
         external_source=params.external_source,
+        content_type=params.content_type,
         has_mentions=None,
         pub_date_from=params.pub_date_from,
         pub_date_to=params.pub_date_to,

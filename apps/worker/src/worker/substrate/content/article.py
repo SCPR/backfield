@@ -8,7 +8,13 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import Any
 
-from backfield_db import AgateProcessedItem, SubstrateArticle, SubstrateImage
+from backfield_db import (
+    DEFAULT_CONTENT_TYPE,
+    AgateProcessedItem,
+    ContentType,
+    SubstrateArticle,
+    SubstrateImage,
+)
 from backfield_db.text_sanitize import strip_nul_bytes
 from backfield_entities.ingest.article_external_identity import (
     ARTICLE_TEXT_FINGERPRINT_SOURCE,
@@ -138,8 +144,13 @@ def _apply_article_merge(
     processed_item_id: int | None = None,
     external_source: str | None = None,
     external_id: str | None = None,
+    content_type: ContentType = DEFAULT_CONTENT_TYPE,
 ) -> bool:
-    """Merge incoming fields onto the existing row; True when content changed."""
+    """Merge incoming fields onto the existing row; True when content changed.
+
+    ``content_type`` follows the flow that last saved the row, but a change to it alone is
+    not a content change (it does not alter the text that gets embedded).
+    """
     resolved_url = url_str or article.url
     content_changed = (
         article.headline != headline_str
@@ -158,6 +169,7 @@ def _apply_article_merge(
     article.updated = updated
     article.text = text_str
     article.url = resolved_url
+    article.content_type = content_type.value
     article.source_run_id = run_id
     if processed_item_id is not None:
         article.source_item_id = processed_item_id
@@ -189,6 +201,7 @@ def _upsert_article(
     consolidated: dict[str, Any],
     run_id: str,
     processed_item_id: int | None = None,
+    content_type: ContentType = DEFAULT_CONTENT_TYPE,
 ) -> ArticleUpsertResult:
     url = consolidated.get("url")
     url_str = str(url).strip() if isinstance(url, str) else None
@@ -282,6 +295,7 @@ def _upsert_article(
         "text_str": text_str,
         "run_id": run_id,
         "processed_item_id": processed_item_id,
+        "content_type": content_type,
     }
     if ledger_id:
         merge_kwargs["external_source"] = resolved_external_source
@@ -299,6 +313,7 @@ def _upsert_article(
             published=published,
             updated=updated,
             text=text_str,
+            content_type=content_type.value,
             source_run_id=run_id,
             source_item_id=processed_item_id,
             edited=True,

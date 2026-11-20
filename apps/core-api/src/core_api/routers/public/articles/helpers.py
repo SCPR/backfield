@@ -31,6 +31,12 @@ def parse_optional_date(value: str | None, *, param_name: str) -> date | None:
 MAX_META_CLAUSES = 25
 MAX_META_CATEGORIES_PER_CLAUSE = 50
 
+CONTENT_TYPE_PARAM_DESCRIPTION = (
+    "Repeatable filter by kind of content: article or show_segment. "
+    "Omit to include every kind. Unlike external_source (the outlet or show), "
+    "this is what the item is."
+)
+
 META_PARAM_DESCRIPTION = (
     "Repeatable metadata filter clause (AND across clauses). "
     "Forms: type, type:category, type:cat1|cat2 (OR within type), !type or !type:category. "

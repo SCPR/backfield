@@ -175,6 +175,26 @@ describe("endpoint presentation contract", () => {
     ])
     expect(articleSearchInclude.helperText).toMatch(/images includes up to 10/)
 
+    const contentTypeParameter = articleSearch!.parameters.find(
+      (parameter) => parameter.name === "content_type",
+    )
+    expect(contentTypeParameter).toBeDefined()
+    const articleSearchContentType = presentationForField(
+      articleSearch!,
+      "content_type",
+      { type: "array", items: { type: "string" } },
+      contentTypeParameter!.description,
+      blockedContext,
+      "query",
+    )
+    expect(articleSearchContentType.control).toBe("checkboxes")
+    expect(articleSearchContentType.emptyLabel).toBe("Every kind")
+    expect(articleSearchContentType.options).toEqual([
+      { value: "article", label: "Article" },
+      { value: "show_segment", label: "Show segment" },
+    ])
+    expect(articleSearchContentType.helperText).toMatch(/Leave empty to include every kind/)
+
     const sortParameter = articleSearch!.parameters.find(
       (parameter) => parameter.name === "sort",
     )

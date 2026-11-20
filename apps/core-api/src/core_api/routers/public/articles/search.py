@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from backfield_db import BackfieldProject
+from backfield_db import BackfieldProject, ContentType
 from backfield_entities.public.articles import (
     PublicArticleSearchParams,
     PublicArticleSort,
@@ -16,6 +16,7 @@ from sqlmodel import Session
 
 from core_api.deps import get_session
 from core_api.routers.public.articles.helpers import (
+    CONTENT_TYPE_PARAM_DESCRIPTION,
     INCLUDE_PARAM_DESCRIPTION,
     META_PARAM_DESCRIPTION,
     apply_public_article_list_includes,
@@ -46,6 +47,10 @@ def search_project_articles(
     external_source: str | None = Query(
         None,
         description="Filter by publication/outlet name (case-insensitive exact match)",
+    ),
+    content_type: list[ContentType] = Query(
+        default=[],
+        description=CONTENT_TYPE_PARAM_DESCRIPTION,
     ),
     has_mentions: str | None = Query(
         None,
@@ -79,6 +84,7 @@ def search_project_articles(
             meta_clauses=parse_meta_clauses(meta),
             author=author,
             external_source=external_source,
+            content_type=tuple(content_type),
             has_mentions=parse_has_mentions(has_mentions),
             pub_date_from=parse_optional_date(pub_date_from, param_name="pub_date_from"),
             pub_date_to=parse_optional_date(pub_date_to, param_name="pub_date_to"),

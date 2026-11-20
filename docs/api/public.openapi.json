@@ -1,6 +1,15 @@
 {
   "components": {
     "schemas": {
+      "ContentType": {
+        "description": "What kind of content an item is, independent of its outlet (``external_source``).\n\nAdd a value here alongside the flow that produces the new kind of content.",
+        "enum": [
+          "article",
+          "show_segment"
+        ],
+        "title": "ContentType",
+        "type": "string"
+      },
       "PaginatedResponse_PublicArticleCustomRecordOut_": {
         "properties": {
           "items": {
@@ -327,6 +336,10 @@
             ],
             "title": "Author"
           },
+          "content_type": {
+            "$ref": "#/components/schemas/ContentType",
+            "default": "article"
+          },
           "counts": {
             "anyOf": [
               {
@@ -510,6 +523,13 @@
             "title": "Authors",
             "type": "array"
           },
+          "content_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Content Types",
+            "type": "array"
+          },
           "external_sources": {
             "items": {
               "type": "string"
@@ -542,6 +562,7 @@
         "required": [
           "authors",
           "external_sources",
+          "content_types",
           "format_categories",
           "topic_categories",
           "subject_categories"
@@ -642,6 +663,14 @@
             },
             "minItems": 1,
             "title": "Cells",
+            "type": "array"
+          },
+          "content_type": {
+            "description": "Repeatable filter by kind of content: article or show_segment. Omit to include every kind. Unlike external_source (the outlet or show), this is what the item is.",
+            "items": {
+              "$ref": "#/components/schemas/ContentType"
+            },
+            "title": "Content Type",
             "type": "array"
           },
           "external_source": {
@@ -849,6 +878,10 @@
               }
             ],
             "title": "Author"
+          },
+          "content_type": {
+            "$ref": "#/components/schemas/ContentType",
+            "default": "article"
           },
           "counts": {
             "anyOf": [
@@ -1486,6 +1519,10 @@
             ],
             "title": "Author"
           },
+          "content_type": {
+            "$ref": "#/components/schemas/ContentType",
+            "default": "article"
+          },
           "counts": {
             "anyOf": [
               {
@@ -1746,6 +1783,13 @@
             ],
             "title": "Author"
           },
+          "content_type": {
+            "items": {
+              "$ref": "#/components/schemas/ContentType"
+            },
+            "title": "Content Type",
+            "type": "array"
+          },
           "external_source": {
             "anyOf": [
               {
@@ -1913,6 +1957,10 @@
               }
             ],
             "title": "Author"
+          },
+          "content_type": {
+            "$ref": "#/components/schemas/ContentType",
+            "default": "article"
           },
           "counts": {
             "anyOf": [
@@ -3246,6 +3294,10 @@
       },
       "PublicMentionArticleOut": {
         "properties": {
+          "content_type": {
+            "$ref": "#/components/schemas/ContentType",
+            "default": "article"
+          },
           "headline": {
             "title": "Headline",
             "type": "string"
@@ -6817,6 +6869,21 @@
               ],
               "description": "Filter by publication/outlet name (case-insensitive exact match)",
               "title": "External Source"
+            }
+          },
+          {
+            "description": "Repeatable filter by kind of content: article or show_segment. Omit to include every kind. Unlike external_source (the outlet or show), this is what the item is.",
+            "in": "query",
+            "name": "content_type",
+            "required": false,
+            "schema": {
+              "default": [],
+              "description": "Repeatable filter by kind of content: article or show_segment. Omit to include every kind. Unlike external_source (the outlet or show), this is what the item is.",
+              "items": {
+                "$ref": "#/components/schemas/ContentType"
+              },
+              "title": "Content Type",
+              "type": "array"
             }
           },
           {
@@ -11406,6 +11473,21 @@
             }
           },
           {
+            "description": "Repeatable filter by kind of content: article or show_segment. Omit to include every kind. Unlike external_source (the outlet or show), this is what the item is.",
+            "in": "query",
+            "name": "content_type",
+            "required": false,
+            "schema": {
+              "default": [],
+              "description": "Repeatable filter by kind of content: article or show_segment. Omit to include every kind. Unlike external_source (the outlet or show), this is what the item is.",
+              "items": {
+                "$ref": "#/components/schemas/ContentType"
+              },
+              "title": "Content Type",
+              "type": "array"
+            }
+          },
+          {
             "description": "Repeatable metadata filter clause (AND across clauses). Forms: type, type:category, type:cat1|cat2 (OR within type), !type or !type:category. Repeat a type to require all listed categories. Max 25 clauses; max 50 categories per clause.",
             "in": "query",
             "name": "meta",
@@ -12076,6 +12158,21 @@
               ],
               "description": "Filter by publication/outlet name (exact match)",
               "title": "External Source"
+            }
+          },
+          {
+            "description": "Repeatable filter by kind of content: article or show_segment. Omit to include every kind. Unlike external_source (the outlet or show), this is what the item is.",
+            "in": "query",
+            "name": "content_type",
+            "required": false,
+            "schema": {
+              "default": [],
+              "description": "Repeatable filter by kind of content: article or show_segment. Omit to include every kind. Unlike external_source (the outlet or show), this is what the item is.",
+              "items": {
+                "$ref": "#/components/schemas/ContentType"
+              },
+              "title": "Content Type",
+              "type": "array"
             }
           },
           {
@@ -12961,6 +13058,21 @@
               ],
               "description": "Filter by publication/outlet name (exact match)",
               "title": "External Source"
+            }
+          },
+          {
+            "description": "Repeatable filter by kind of content: article or show_segment. Omit to include every kind. Unlike external_source (the outlet or show), this is what the item is.",
+            "in": "query",
+            "name": "content_type",
+            "required": false,
+            "schema": {
+              "default": [],
+              "description": "Repeatable filter by kind of content: article or show_segment. Omit to include every kind. Unlike external_source (the outlet or show), this is what the item is.",
+              "items": {
+                "$ref": "#/components/schemas/ContentType"
+              },
+              "title": "Content Type",
+              "type": "array"
             }
           },
           {
@@ -14795,6 +14907,21 @@
             }
           },
           {
+            "description": "Repeatable filter by kind of content: article or show_segment. Omit to include every kind. Unlike external_source (the outlet or show), this is what the item is.",
+            "in": "query",
+            "name": "content_type",
+            "required": false,
+            "schema": {
+              "default": [],
+              "description": "Repeatable filter by kind of content: article or show_segment. Omit to include every kind. Unlike external_source (the outlet or show), this is what the item is.",
+              "items": {
+                "$ref": "#/components/schemas/ContentType"
+              },
+              "title": "Content Type",
+              "type": "array"
+            }
+          },
+          {
             "description": "Repeatable metadata filter clause (AND across clauses). Forms: type, type:category, type:cat1|cat2 (OR within type), !type or !type:category. Repeat a type to require all listed categories. Max 25 clauses; max 50 categories per clause.",
             "in": "query",
             "name": "meta",
@@ -15465,6 +15592,21 @@
               ],
               "description": "Filter by publication/outlet name (exact match)",
               "title": "External Source"
+            }
+          },
+          {
+            "description": "Repeatable filter by kind of content: article or show_segment. Omit to include every kind. Unlike external_source (the outlet or show), this is what the item is.",
+            "in": "query",
+            "name": "content_type",
+            "required": false,
+            "schema": {
+              "default": [],
+              "description": "Repeatable filter by kind of content: article or show_segment. Omit to include every kind. Unlike external_source (the outlet or show), this is what the item is.",
+              "items": {
+                "$ref": "#/components/schemas/ContentType"
+              },
+              "title": "Content Type",
+              "type": "array"
             }
           },
           {
@@ -17372,6 +17514,21 @@
             }
           },
           {
+            "description": "Repeatable filter by kind of content: article or show_segment. Omit to include every kind. Unlike external_source (the outlet or show), this is what the item is.",
+            "in": "query",
+            "name": "content_type",
+            "required": false,
+            "schema": {
+              "default": [],
+              "description": "Repeatable filter by kind of content: article or show_segment. Omit to include every kind. Unlike external_source (the outlet or show), this is what the item is.",
+              "items": {
+                "$ref": "#/components/schemas/ContentType"
+              },
+              "title": "Content Type",
+              "type": "array"
+            }
+          },
+          {
             "description": "Repeatable metadata filter clause (AND across clauses). Forms: type, type:category, type:cat1|cat2 (OR within type), !type or !type:category. Repeat a type to require all listed categories. Max 25 clauses; max 50 categories per clause.",
             "in": "query",
             "name": "meta",
@@ -18042,6 +18199,21 @@
               ],
               "description": "Filter by publication/outlet name (exact match)",
               "title": "External Source"
+            }
+          },
+          {
+            "description": "Repeatable filter by kind of content: article or show_segment. Omit to include every kind. Unlike external_source (the outlet or show), this is what the item is.",
+            "in": "query",
+            "name": "content_type",
+            "required": false,
+            "schema": {
+              "default": [],
+              "description": "Repeatable filter by kind of content: article or show_segment. Omit to include every kind. Unlike external_source (the outlet or show), this is what the item is.",
+              "items": {
+                "$ref": "#/components/schemas/ContentType"
+              },
+              "title": "Content Type",
+              "type": "array"
             }
           },
           {

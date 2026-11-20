@@ -147,18 +147,19 @@ def persist_from_consolidated(
             "and/or consolidated['custom_records']"
         )
 
+    settings = DbOutputCanonicalSettings.from_node_params(db_output_params)
     upsert = _upsert_article(
         session,
         project_id=project_id,
         consolidated=consolidated,
         run_id=run_id,
         processed_item_id=processed_item_id,
+        content_type=settings.content_type,
     )
     article = upsert.article
     _sync_images(session, article_id=int(article.id), consolidated=consolidated)
 
     article_text = str(consolidated.get("text") or "")
-    settings = DbOutputCanonicalSettings.from_node_params(db_output_params)
     policy: ReconciliationPolicy = settings.reconciliation_policy
     if replace_machine_geography and not (
         isinstance(db_output_params, dict) and "reconciliation_policy" in db_output_params

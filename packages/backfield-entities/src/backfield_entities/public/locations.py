@@ -8,6 +8,7 @@ from enum import StrEnum
 from typing import Any
 
 from backfield_db import (
+    ContentType,
     StylebookLocationAlias,
     StylebookLocationCanonical,
     StylebookLocationMeta,
@@ -509,6 +510,7 @@ def list_public_location_articles(
     meta_clauses: tuple[ArticleMetaClause, ...] = (),
     author: str | None = None,
     external_source: str | None = None,
+    content_type: tuple[ContentType, ...] = (),
     pub_date_from: date | None = None,
     pub_date_to: date | None = None,
 ) -> tuple[list[PublicArticleOut], int] | None:
@@ -532,6 +534,7 @@ def list_public_location_articles(
         meta_clauses=meta_clauses,
         author=author,
         external_source=external_source,
+        content_type=content_type,
         pub_date_from=pub_date_from,
         pub_date_to=pub_date_to,
     )

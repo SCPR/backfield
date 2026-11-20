@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from backfield_db import BackfieldProject
+from backfield_db import BackfieldProject, ContentType
 from backfield_entities.public.mention_timeline import (
     PublicEntityMentionTimelineItemOut,
     list_public_organization_mention_timeline,
@@ -20,6 +20,7 @@ from sqlmodel import Session
 
 from core_api.deps import get_session
 from core_api.routers.public.articles.helpers import (
+    CONTENT_TYPE_PARAM_DESCRIPTION,
     META_PARAM_DESCRIPTION,
     NATURE_PARAM_DESCRIPTION,
     parse_meta_clauses,
@@ -112,6 +113,10 @@ def list_project_organization_mentions(
         None,
         description="Filter by publication/outlet name (exact match)",
     ),
+    content_type: list[ContentType] = Query(
+        default=[],
+        description=CONTENT_TYPE_PARAM_DESCRIPTION,
+    ),
     meta: list[str] = Query(default=[], description=META_PARAM_DESCRIPTION),
     pub_date_from: str | None = Query(None),
     pub_date_to: str | None = Query(None),
@@ -130,6 +135,7 @@ def list_project_organization_mentions(
         natures=natures,
         author=author,
         external_source=external_source,
+        content_type=tuple(content_type),
         section=None,
         meta_type=None,
         meta_category=None,

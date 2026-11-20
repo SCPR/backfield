@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
-from backfield_db import SubstrateArticle, SubstrateLocation, SubstrateLocationMention
+from backfield_db import ContentType, SubstrateArticle, SubstrateLocation, SubstrateLocationMention
 from pydantic import BaseModel, Field
 from sqlalchemy import bindparam, text
 from sqlmodel import Session, col, select
@@ -49,6 +49,7 @@ class PublicArticleGeoCellsBatchParams:
     exclude_meta_category: str | None = None
     meta_clauses: tuple[ArticleMetaClause, ...] = ()
     external_source: str | None = None
+    content_type: tuple[ContentType, ...] = ()
     pub_date_from: date | None = None
     pub_date_to: date | None = None
     limit: int = 25
@@ -113,6 +114,7 @@ def _mention_filters(params: PublicArticleGeoCellsBatchParams) -> PublicArticleG
         exclude_meta_category=params.exclude_meta_category,
         meta_clauses=params.meta_clauses,
         external_source=params.external_source,
+        content_type=params.content_type,
         pub_date_from=params.pub_date_from,
         pub_date_to=params.pub_date_to,
     )
